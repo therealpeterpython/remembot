@@ -12,6 +12,7 @@ class rem_bot_starter(threading.Thread):
     def run(self):
         rem_bot.main(self.token)
 
+        
 class task_checker(threading.Thread):
     def __init__(self, name='task_checker'):
         """ constructor, setting initial variables """
@@ -21,7 +22,7 @@ class task_checker(threading.Thread):
     def run(self):
         while not self._stopevent.isSet():
             rememgram.check_tasks()
-            self._stopevent.wait(30)
+            self._stopevent.wait(60)
             
     def join(self, timeout=None):
         """ Stop the thread. """
@@ -33,7 +34,7 @@ class task_checker(threading.Thread):
         
         
         
-token_path = "./token.txt"
+token_path = "./tokens.txt"
 
 with open(token_path, "r") as token_file:
     token_list = [line.strip('\n') for line in token_file]

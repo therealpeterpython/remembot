@@ -25,6 +25,7 @@ def caps(bot, update, args):
     bot.send_message(chat_id=update.message.chat_id, text=text_caps)
     bot.send_message(chat_id=update.message.chat_id, text=str(update.message.chat_id))
 
+    
 def add_task(bot, update, args):
     try:
         rememgram.add_task(args, update.message.chat_id)
@@ -32,12 +33,15 @@ def add_task(bot, update, args):
         err_msg = "The task could not be parsed!"
         bot.send_message(chat_id=update.message.chat_id, text=err_msg)
 
+        
 def remind_task(task):
     bot.send_message(chat_id=task.chat_id, text=task.description)
 
+    
 def check(bot, update):
     rememgram.check_tasks()
 
+    
 def all(bot, update):
     id = update.message.chat_id
     tbc = rememgram.get_tasks_by_chat()
@@ -47,6 +51,7 @@ def all(bot, update):
         msg += "==========================================\n"
         msg += '\n'.join(['"'+task.description+'"' for task in tbc[id]])
         bot.send_message(id, text=msg)
+
 
 def all_id(bot, update):
     id = update.message.chat_id
@@ -58,9 +63,19 @@ def all_id(bot, update):
         msg += '\n'.join([str(task.id)+':\t\t"'+task.description+'"' for task in tbc[id]])
         bot.send_message(id, text=msg)
 
+        
 def delete(bot, update, args):
+    if not args:
+        not_msg = "Nothing to delete!"
+        bot.send_message(chat_id=update.message.chat_id, text=not_msg)
+        return
+
     ids = [int(s) for s in args]
     rememgram.delete_tasks(ids)
+    ids_str = ", ".join(str(ids))
+    del_msg = "The tasks with the ids "+ids_str+" were removed!"
+    bot.send_message(chat_id=update.message.chat_id, text=del_msg)
+
 
 def delete_all(bot, update):
     rememgram.delete_all_tasks(update.message.chat_id)
@@ -81,8 +96,6 @@ def main(token):
     global bot  # ugly workaround for the remind_task()
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-    #bot = telegram.Bot(token=token)
-    #token = '738071046:AAEDgLp8OXnAs4K2Ff5Oe-v1z44_Gf0KMww'
     updater = Updater(token=token)
     bot = updater.bot   # ugly workaround for the remind_task()
     dispatcher = updater.dispatcher
@@ -107,9 +120,6 @@ def main(token):
     dispatcher.add_handler(delete_all_handler)
     dispatcher.add_handler(help_handler)
 
-    #updates = bot.get_updates()
-    #print(updates)
-    #print([u.message.text for u in updates])
-    updater.start_polling(poll_interval = 3.)
+    updater.start_polling()
     updater.idle()
 

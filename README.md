@@ -25,7 +25,7 @@ i.e.: `/add 3. 17:42 "Clean your mess!"`
 
 To get all of your tasks just write `/all`.
 If you want to delete a task you need it's id. To get the id's of your tasks type in your chat `/allid`.
-With `/del id` you can delete the task with id.
+With `/del id` you can delete the task with the id `id`.
 
 ## Roadmap
 Some of the code is really ugly, i will rewrite parts of it.  

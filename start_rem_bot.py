@@ -2,6 +2,9 @@ import rem_bot
 import rememgram
 import threading
 import time
+import os
+import getpass
+
 
 class rem_bot_starter(threading.Thread):
     def __init__(self, name, token):
@@ -12,7 +15,7 @@ class rem_bot_starter(threading.Thread):
     def run(self):
         rem_bot.main(self.token)
 
-        
+
 class task_checker(threading.Thread):
     def __init__(self, name='task_checker'):
         """ constructor, setting initial variables """
@@ -23,7 +26,7 @@ class task_checker(threading.Thread):
         while not self._stopevent.isSet():
             rememgram.check_tasks()
             self._stopevent.wait(60)
-            
+
     def join(self, timeout=None):
         """ Stop the thread. """
         self._stopevent.set()
@@ -31,21 +34,27 @@ class task_checker(threading.Thread):
 
 
 
-        
-        
-        
+
+
+
 token_path = "./tokens.txt"
+
+# Save the process data to make it easier to automatically check if its still running
+with open("process.info", "w") as prcs_file:
+        prcs_file.write(str(getpass.getuser())+"\n")
+        prcs_file.write(str(os.path.basename(__file__))+"\n")
+        prcs_file.write(str(os.getpid()))
 
 with open(token_path, "r") as token_file:
     token_list = [line.strip('\n') for line in token_file]
-        
+
 for num, token in enumerate(token_list):
     tmp_rbs = rem_bot_starter(name="rbs_bot["+str(num)+"]", token=token)
-    # If tmp_rbs is a daemon thread it stops when every other non daemon thread has stopped 
-    tmp_rbs.daemon = True  
+    # If tmp_rbs is a daemon thread it stops when every other non daemon thread has stopped
+    tmp_rbs.daemon = True
     tmp_rbs.start()
 
-tc = task_checker(name = "tc") 
+tc = task_checker(name = "tc")
 tc.start()
 
 # Dont let the main programm just ends

@@ -6,26 +6,9 @@ import rememgram
 
 
 def start(bot, update):
-    bot.send_message(chat_id=update.message.chat_id, text="Ich bin dein toller rememgram Bot! Aktuell bin ich noch in der Entwicklung  :)")
+    help(bot, update)
 
-def nice(bot, update):
-    bot.send_message(chat_id=update.message.chat_id, text="Danke!!  C:")
 
-def close(bot, update):
-    bot.send_message(chat_id=update.message.chat_id, text="Bye bye")
-    updater.stop()
-    exit(0)
-
-def echo(bot, update):
-    bot.send_message(chat_id=update.message.chat_id, text=update.message.text)
-
-def caps(bot, update, args):
-    print(' '.join(args))
-    text_caps = ' '.join(args).upper()
-    bot.send_message(chat_id=update.message.chat_id, text=text_caps)
-    bot.send_message(chat_id=update.message.chat_id, text=str(update.message.chat_id))
-
-    
 def add_task(bot, update, args):
     try:
         rememgram.add_task(args, update.message.chat_id)
@@ -33,15 +16,15 @@ def add_task(bot, update, args):
         err_msg = "The task could not be parsed!"
         bot.send_message(chat_id=update.message.chat_id, text=err_msg)
 
-        
+
 def remind_task(task):
     bot.send_message(chat_id=task.chat_id, text=task.description)
 
-    
+
 def check(bot, update):
     rememgram.check_tasks()
 
-    
+
 def all(bot, update):
     id = update.message.chat_id
     tbc = rememgram.get_tasks_by_chat()
@@ -63,7 +46,7 @@ def all_id(bot, update):
         msg += '\n'.join([str(task.id)+':\t\t"'+task.description+'"' for task in tbc[id]])
         bot.send_message(id, text=msg)
 
-        
+
 def delete(bot, update, args):
     if not args:
         not_msg = "Nothing to delete!"
@@ -101,7 +84,7 @@ def main(token):
     dispatcher = updater.dispatcher
 
     start_handler = CommandHandler('start', start)
-    caps_handler = CommandHandler('caps', caps, pass_args=True)
+
     add_task_handler = CommandHandler('add', add_task, pass_args=True)
     check_handler = CommandHandler('check', check)
     all_handler = CommandHandler('all', all)
@@ -111,7 +94,7 @@ def main(token):
     help_handler = CommandHandler('help', help)
 
     dispatcher.add_handler(start_handler)
-    dispatcher.add_handler(caps_handler)
+
     dispatcher.add_handler(add_task_handler)
     dispatcher.add_handler(check_handler)
     dispatcher.add_handler(all_handler)

@@ -11,6 +11,11 @@ For Linux you have to use `python3`.
 Now you can add the bot to your group or start a privat conversation with him.  
 That's all!
 
+## Features
+You can use the main programm on every platform with python support.
+If you use it on linux you can also use the auto_starter.sh. This is a script checks if
+your bot is running and starts it if necessary. 
+
 ## Commands
 The most important command is `/add`.  
 You can add 4 different types of dates:    

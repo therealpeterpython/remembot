@@ -52,7 +52,7 @@ def all_id(bot, update):
     if id in tbc:
         msg = "I remember the following tasks:\n\n"
         #msg += "==========================================\n"
-        msg += '\n\n'.join([str(task.id)+':\n"'+task.description+'"' for task in tbc[id]])
+        msg += '\n\n'.join([str(task.id)+'\n"'+task.description+'"' for task in tbc[id]])
         bot.send_message(id, text=msg)
 
 
@@ -65,7 +65,7 @@ def delete(bot, update, args):
 
     ids = [int(s) for s in args]
     rememgram.delete_tasks(ids)
-    ids_str = ", ".join(str(ids))
+    ids_str = ", ".join(ids)
     del_msg = "The tasks with the ids "+ids_str+" were removed!"
     bot.send_message(chat_id=update.message.chat_id, text=del_msg)
 
@@ -74,21 +74,11 @@ def delete(bot, update, args):
 def delete_all(bot, update):
     rememgram.delete_all_tasks(update.message.chat_id)
     msg = "All tasks were removed!"
-    bot.send_message(id, text=msg)
+    bot.send_message(chat_id=update.message.chat_id, text=msg)
 
 
 # Writes the help
 def help(bot, update):
-    """
-    help_msg = 'Mit /add können neue Termine hinzugefügt werden. Es gibt dabei 4 Arten von Terminen:\n'
-    help_msg += '1) Ein einmaliger Termin nach Wochentag, \nz.b.: 1x 1. Montag 3.2019 13:37 "Dies ist ein wichtiger Termin"\n'
-    help_msg += '2) Ein einmaliger Termin nach Datum,     \nz.b.: 20.4.2019 4:20 "Das solltest du nicht vergessen"\n'
-    help_msg += '3) Ein monatlicher Termin nach Wochentag,\nz.b.: 2. Freitag 6:66 "Das Datum ist wichtig"\n'
-    help_msg += '4) Ein monatlicher Termin nach Datum,    \nz.b.: 3. 17:42 "Hier war doch was!"\n\n'
-    help_msg += 'Mit /all können alle Termine eingesehen werden, mit /allid können die ids der Termine angezeigt werden sodass diese mit /del <id> gelöscht werden können.\n'
-    help_msg += '/help zeigt dir wieder diese Hilfe an.'
-    """
-
     help_msg = 'The most important command is /add.\n'
     help_msg += 'You can add 4 different types of dates:\n\n'
 
@@ -99,7 +89,7 @@ def help(bot, update):
     help_msg += 'i.e.: /add 20.4.2019 4:20 "Don\'t miss me!`\n\n'
 
     help_msg += '3) A regular monthly appointment at the nth occurence of the given weekday,\n'
-    help_msg += 'i.e.: /add 2. Friday 6:66 "This is an important date."\n\n'
+    help_msg += 'i.e.: /add 2. Friday 6:42 "This is an important date."\n\n'
 
     help_msg += '4)  A regular monthly appointment at the given date,\n'
     help_msg += 'i.e.: /add 3. 17:42 "Clean your mess!"\n\n\n'

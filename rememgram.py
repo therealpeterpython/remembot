@@ -43,18 +43,6 @@ today = dt.datetime.today()
 # /add einmal 7.3.2019 9:30 "Auch hier Beschreibung"
 #
 
-"""
-
-Mit /add können neue Termine hinzugefügt werden. Es gibt dabei 4 Arten von Terminen:
-1) Ein einmaliger Termin nach Wochentag, z.b.: 1x 1. Montag 3.2019 13:37 "Dies ist ein wichtiger Termin"
-2) Ein einmaliger Termin nach Datum, z.b.: 20.4.2019 4:20 "Das solltest du nicht vergessen"
-3) Ein monatlicher Termin nach Wochentag, z.b.: 2. Freitag 6:66 "Das Datum ist wichtig"
-4) Ein monatlicher Termin nach Datum, z.b.: 3. 17:42 "Hier war doch was!"
-
-Mit /all können alle Termine eingesehen werden. mit /allid können die ids der Termine angezeigt werden sodass diese mit /del <id> gelöscht werden können.
-/help zeigt dir wieder diese Hilfe an.
-
-"""
 
 # Saves the time informations of a task
 #
@@ -68,9 +56,12 @@ class schedule:
         self.year = year
         self.month = month
 
+    # gets invoked with str(a_schedule), usefull for debugging
     def __str__(self):
-        s = "schedule(" + ', '.join(self.format, self.day, self.hour, self.minute, self.week_number, self.year, self.month) + ")"
+        lst = [self.format, self.day, self.hour, self.minute, self.week_number, self.year, self.month]
+        s = "schedule(" + ', '.join([str(e) for e in lst]) + ")"
         return s
+
 
 # A task which contains an unique id, his description, schedule and chat id(so that it knows to which chat it belongs)
 class task:

@@ -39,8 +39,8 @@ def all(bot, update):
     tbc = rememgram.get_tasks_by_chat()
 
     if id in tbc:
-        msg = "Aktuelle habe ich mir folgende Aufgaben gemerkt:\n"
-        msg += "==========================================\n"
+        msg = "I remember the following tasks:\n\n"
+        #msg += "==========================================\n"
         msg += '\n'.join(['"'+task.description+'"' for task in tbc[id]])
         bot.send_message(id, text=msg)
 
@@ -50,9 +50,9 @@ def all_id(bot, update):
     tbc = rememgram.get_tasks_by_chat()
 
     if id in tbc:
-        msg = "Aktuelle habe ich mir folgende Aufgaben gemerkt:\n"
-        msg += "==========================================\n"
-        msg += '\n'.join([str(task.id)+':\t\t"'+task.description+'"' for task in tbc[id]])
+        msg = "I remember the following tasks:\n\n"
+        #msg += "==========================================\n"
+        msg += '\n\n'.join([str(task.id)+':\n"'+task.description+'"' for task in tbc[id]])
         bot.send_message(id, text=msg)
 
 
@@ -90,19 +90,24 @@ def help(bot, update):
     """
 
     help_msg = 'The most important command is /add.\n'
-    help_msg += 'You can add 4 different types of dates:\n'
+    help_msg += 'You can add 4 different types of dates:\n\n'
+
     help_msg += '1) Just once at the nth occurence of the given weekday,\n'
-    help_msg += 'i.e.: /add 1x 1. Monday 3.2019 13:37 "Important meeting!"\n'
+    help_msg += 'i.e.: /add 1x 1. Monday 3.2019 13:37 "Important meeting!"\n\n'
+
     help_msg += '2) Just once at the given date,\n'
-    help_msg += 'i.e.: /add 20.4.2019 4:20 "Don\'t miss me!`\n'
+    help_msg += 'i.e.: /add 20.4.2019 4:20 "Don\'t miss me!`\n\n'
+
     help_msg += '3) A regular monthly appointment at the nth occurence of the given weekday,\n'
-    help_msg += 'i.e.: /add 2. Friday 6:66 "This is an important date."\n'
+    help_msg += 'i.e.: /add 2. Friday 6:66 "This is an important date."\n\n'
+
     help_msg += '4)  A regular monthly appointment at the given date,\n'
-    help_msg += 'i.e.: /add 3. 17:42 "Clean your mess!"\n\n'
+    help_msg += 'i.e.: /add 3. 17:42 "Clean your mess!"\n\n\n'
+
 
     help_msg += 'To get all of your tasks just write /all.\n'
     help_msg += 'If you want to delete a task you need it\'s id. To get the id\'s of your tasks type in your chat /allid.\n'
-    help_msg += 'With /del id you can delete the task with the id id.\n'
+    help_msg += 'With /del <id> you can delete the task with the id <id>.\n'
     bot.send_message(chat_id=update.message.chat_id, text=help_msg)
 
 

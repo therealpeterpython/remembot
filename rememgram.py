@@ -230,7 +230,7 @@ def delete_tasks(remove_ids):
 def delete_all_tasks(chat_id):
     tasks = load_tasks()
     tmp = list(tasks) # dont iterate over a changing list
-    for task in tasks:
+    for task in tmp:
         if task.chat_id == chat_id:
             tasks.remove(task)
     save_tasks(tasks)

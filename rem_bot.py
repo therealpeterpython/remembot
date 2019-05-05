@@ -86,7 +86,7 @@ def help(bot, update):
     help_msg += 'i.e.: /add 1x 1. Monday 3.2019 13:37 "Important meeting!"\n\n'
 
     help_msg += '2) Just once at the given date,\n'
-    help_msg += 'i.e.: /add 20.4.2019 4:20 "Don\'t miss me!"\n\n'
+    help_msg += 'i.e.: /add 1x 20.4.2019 4:20 "Don\'t miss me!"\n\n'
 
     help_msg += '3) A regular monthly appointment at the nth occurence of the given weekday,\n'
     help_msg += 'i.e.: /add 2. Friday 6:42 "This is an important date."\n\n'

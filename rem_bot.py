@@ -65,7 +65,7 @@ def delete(bot, update, args):
 
     ids = [int(s) for s in args]
     rememgram.delete_tasks(ids)
-    ids_str = ", ".join(ids)
+    ids_str = ", ".join([str(id) for id in ids])
     del_msg = "The tasks with the ids "+ids_str+" were removed!"
     bot.send_message(chat_id=update.message.chat_id, text=del_msg)
 

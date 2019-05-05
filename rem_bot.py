@@ -1,3 +1,7 @@
+# The bot and with this the "first backend".
+# It gets the commands from the chats and process them.
+#
+
 import telegram
 from telegram.ext import Updater, Filters, CommandHandler, MessageHandler
 import logging
@@ -5,10 +9,12 @@ import logging
 import rememgram
 
 
+# Start the bot
 def start(bot, update):
     help(bot, update)
 
 
+# Add a task
 def add_task(bot, update, args):
     try:
         rememgram.add_task(args, update.message.chat_id)
@@ -17,14 +23,17 @@ def add_task(bot, update, args):
         bot.send_message(chat_id=update.message.chat_id, text=err_msg)
 
 
+# Remind the appropriate chat of the task
 def remind_task(task):
     bot.send_message(chat_id=task.chat_id, text=task.description)
 
 
+# Check if there are task which need a reminder
 def check(bot, update):
     rememgram.check_tasks()
 
 
+# Write the memorised tasks in the appropriate chat
 def all(bot, update):
     id = update.message.chat_id
     tbc = rememgram.get_tasks_by_chat()
@@ -35,7 +44,7 @@ def all(bot, update):
         msg += '\n'.join(['"'+task.description+'"' for task in tbc[id]])
         bot.send_message(id, text=msg)
 
-
+# Write the memorised tasks with their id in the appropriate chat
 def all_id(bot, update):
     id = update.message.chat_id
     tbc = rememgram.get_tasks_by_chat()
@@ -47,6 +56,7 @@ def all_id(bot, update):
         bot.send_message(id, text=msg)
 
 
+# Deletes the given tasks (given by their id)
 def delete(bot, update, args):
     if not args:
         not_msg = "Nothing to delete!"
@@ -60,11 +70,16 @@ def delete(bot, update, args):
     bot.send_message(chat_id=update.message.chat_id, text=del_msg)
 
 
+# Delete all task of a specific chat
 def delete_all(bot, update):
     rememgram.delete_all_tasks(update.message.chat_id)
+    msg = "All tasks were removed!"
+    bot.send_message(id, text=msg)
 
 
+# Writes the help
 def help(bot, update):
+    """
     help_msg = 'Mit /add können neue Termine hinzugefügt werden. Es gibt dabei 4 Arten von Terminen:\n'
     help_msg += '1) Ein einmaliger Termin nach Wochentag, \nz.b.: 1x 1. Montag 3.2019 13:37 "Dies ist ein wichtiger Termin"\n'
     help_msg += '2) Ein einmaliger Termin nach Datum,     \nz.b.: 20.4.2019 4:20 "Das solltest du nicht vergessen"\n'
@@ -72,19 +87,39 @@ def help(bot, update):
     help_msg += '4) Ein monatlicher Termin nach Datum,    \nz.b.: 3. 17:42 "Hier war doch was!"\n\n'
     help_msg += 'Mit /all können alle Termine eingesehen werden, mit /allid können die ids der Termine angezeigt werden sodass diese mit /del <id> gelöscht werden können.\n'
     help_msg += '/help zeigt dir wieder diese Hilfe an.'
+    """
+
+    help_msg = 'The most important command is /add.\n'
+    help_msg += 'You can add 4 different types of dates:\n'
+    help_msg += '1) Just once at the nth occurence of the given weekday,\n'
+    help_msg += 'i.e.: /add 1x 1. Monday 3.2019 13:37 "Important meeting!"\n'
+    help_msg += '2) Just once at the given date,\n'
+    help_msg += 'i.e.: /add 20.4.2019 4:20 "Don\'t miss me!`\n'
+    help_msg += '3) A regular monthly appointment at the nth occurence of the given weekday,\n'
+    help_msg += 'i.e.: /add 2. Friday 6:66 "This is an important date."\n'
+    help_msg += '4)  A regular monthly appointment at the given date,\n'
+    help_msg += 'i.e.: /add 3. 17:42 "Clean your mess!"\n\n'
+
+    help_msg += 'To get all of your tasks just write /all.\n'
+    help_msg += 'If you want to delete a task you need it\'s id. To get the id\'s of your tasks type in your chat /allid.\n'
+    help_msg += 'With /del id you can delete the task with the id id.\n'
     bot.send_message(chat_id=update.message.chat_id, text=help_msg)
 
 
+# Main, register all the handels and the important variables
 def main(token):
     global bot  # ugly workaround for the remind_task()
+
+    # Logging the warnings and errors
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
+    # Get the updater, dispatcher and bot
     updater = Updater(token=token)
-    bot = updater.bot   # ugly workaround for the remind_task()
     dispatcher = updater.dispatcher
+    bot = updater.bot   # ugly workaround for the remind_task(), mayber i can pickle it(?)
 
+    # Define handler
     start_handler = CommandHandler('start', start)
-
     add_task_handler = CommandHandler('add', add_task, pass_args=True)
     check_handler = CommandHandler('check', check)
     all_handler = CommandHandler('all', all)
@@ -93,8 +128,8 @@ def main(token):
     delete_all_handler = CommandHandler('forcedeleteall', delete_all)
     help_handler = CommandHandler('help', help)
 
+    # Add handler
     dispatcher.add_handler(start_handler)
-
     dispatcher.add_handler(add_task_handler)
     dispatcher.add_handler(check_handler)
     dispatcher.add_handler(all_handler)
@@ -103,6 +138,7 @@ def main(token):
     dispatcher.add_handler(delete_all_handler)
     dispatcher.add_handler(help_handler)
 
+    # Get the updates
     updater.start_polling()
     updater.idle()
 

@@ -12,9 +12,9 @@ Now you can add the bot to your group or start a privat conversation with him.
 That's all!
 
 ## Features
-You can use the main programm on every platform with python support.
+You can use the main program on every platform with python support.
 If you use it on linux you can also use the auto_starter.sh. This is a script checks if
-your bot is running and starts it if necessary. 
+your bot is running and starts it if necessary. You can create a cronjob to execute it periodically.
 
 ## Commands
 The most important command is `/add`.  

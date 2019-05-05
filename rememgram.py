@@ -1,5 +1,5 @@
-#
-#
+# The "second backend" of the remembot
+# todo put more infos here
 #
 #
 
@@ -56,7 +56,8 @@ Mit /all können alle Termine eingesehen werden. mit /allid können die ids der 
 
 """
 
-
+# Saves the time informations of a task
+#
 class schedule:
     def __init__(self,format,day,hour,minute,week_number=None,year=None,month=None):
         self.format = format
@@ -71,7 +72,7 @@ class schedule:
         s = "schedule(" + ', '.join(self.format, self.day, self.hour, self.minute, self.week_number, self.year, self.month) + ")"
         return s
 
-
+# A task which contains an unique id, his description, schedule and chat id(so that it knows to which chat it belongs)
 class task:
     def __init__(self, id, description, schedule, chat_id):
         self.id = id
@@ -80,24 +81,24 @@ class task:
         self.chat_id = chat_id
         self.last_execution = None
 
+    # returns true if the task needs an execution
     def need_execution(self):
-        #print("in need_exec: " + str(type(self.get_previous_occurance())))
         return not (self.get_previous_occurance() == self.last_execution)
 
+    # gets the last time the task should have been executed
     def get_previous_occurance(self):
         schedule = self.schedule
         format = schedule.format
         now = dt.datetime.now()
-        if format == "wd":
+        if format == "wd":  # (weekday) regular at every nth (i.e.) monday
             occ = get_nth_weekday(dt.datetime(now.year, now.month, 1, schedule.hour, schedule.minute), schedule.week_number, schedule.day)
             prev = get_nth_weekday(create_valid_date(now.year, now.month-1,1, schedule.hour, schedule.minute), schedule.week_number, schedule.day)
 
             # If there wasnt a first execution now, then there wasnt a last execution also
             prev = prev if self.last_execution else None
-            #print("OCC: "+str(occ))
             return occ if (occ - now).days < 0 else prev
 
-        elif format == "d":
+        elif format == "d": # (date) regular every (i.e.) 13.
             # get the valid day for this month
             occ_day = get_valid_day(now.year, now.month, schedule.day)
             # create the valid occurrence date for this month
@@ -116,11 +117,11 @@ class task:
             # otherwise the prev last month was the last one and gets returned
             return occ if (occ - now).days < 0 else prev
 
-        elif format == "swd":
+        elif format == "swd":   # (single weekday) just once at the nth (i.e.) monday
             occ = get_nth_weekday(dt.datetime(schedule.year, schedule.month, 1, schedule.hour, schedule.minute), schedule.week_number, schedule.day)
             return schedule if (occ - now).days < 0 else None
 
-        elif format == "sd":
+        elif format == "sd":    # (single date) just once some date
             print("SD")
             occ = dt.datetime(schedule.year, schedule.month, schedule.day, schedule.hour, schedule.minute)
             print("OCC: "+str(occ))
@@ -183,7 +184,7 @@ def get_nth_weekday(the_date, nth_week, week_day):
     temp += dt.timedelta(days=adj)
     temp += dt.timedelta(weeks=nth_week-1)
     if temp.month > the_date.month:
-       return get_nth_weekday(the_date,nth_week-1, week_day)
+        return get_nth_weekday(the_date,nth_week-1, week_day)
     else:
         return temp
 
@@ -326,6 +327,10 @@ def parse_input(args):
             hour = args[2].split(":")[0]
             minute = args[2].split(":")[1]
         else:   # (i.e.) '2. 3:33'
+            if args[0].split(".")[1]:   # (i.e.) '2.12 3:33'
+                print("Wrong format!")
+                print(args, description)
+                raise ValueError
             format = "d"
             day = args[0].split(".")[0]
             hour = args[1].split(":")[0]

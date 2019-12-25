@@ -64,8 +64,6 @@ ORDER_NUM = [TYPE, DATE, TIME, DESCRIPTION, NEXT]
 
 class AppointmentCreator:
     _instances2 = dict()
-    # todo OLD
-    _instances = set()
 
     def __str__(self):
         attrs = vars(self)
@@ -84,8 +82,6 @@ class AppointmentCreator:
         self.description = None
         self.command = ""
         self._instances2[chat_id] = self
-        # todo OLD
-        #self._instances.add(self)
 
     def create_command(self):
         # todo "format of the switch to inline argument(;; = 2xSEPARATOR): A;;ONCE;;13.09.2019-14:45;;My text;;A;;NTHDAY;;3x0;;14:45;;My text;;A;;NUM;;13;;14:45;;My text"
@@ -120,42 +116,11 @@ class AppointmentCreator:
 
     def destroy(self):
         del self.__class__._instances2[self.chat_id]
-        # todo OLD
-        #self.__class__._instances.remove(self)
-
-    """
-    @classmethod
-    def getinstances(cls):
-        # todo OLD
-        #return cls._instances
-        return cls._instances2
-    """
 
     @classmethod
     def getinstance(cls, key):
         d = cls._instances2
         return d[key] if key in d else None
-
-
-# todo ggf unnötig sobald wir keine liste sondern ein dict haben
-def clear_chat(chat_id, update, context):
-    ac = AppointmentCreator.getinstance(chat_id)
-    if ac:
-        #bot.edit_message_text(chat_id=chat_id, message_id=ac.message_id)
-        send_expired_message(update, context)
-        ac.destroy()
-
-    # todo OLD
-    """
-    remove = list()  # don't change the set while iterating over it
-    for ac in AppointmentCreator.getinstances():
-        if ac.chat_id == chat_id:
-            bot.delete_message(chat_id=chat_id, message_id=ac.message_id)
-            remove.append(ac)
-
-    for ac in remove:
-        ac.destroy()
-    """
 
 
 # Define a few command handlers. These usually take the two arguments update and
@@ -170,7 +135,6 @@ def start(update, context):
         ac.destroy()
 
     context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
-    clear_chat(chat_id, context.bot)
     message = appointment_type(update, context)
     AppointmentCreator(chat_id=update.message.chat.id, message_id=message.message_id, bot=context.bot)
 
@@ -228,17 +192,6 @@ def description_handler(update, context):
         context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
         next_appointment(update, context)
 
-    # todo OLD
-    """
-    for ac in AppointmentCreator.getinstances():
-        if ac.chat_id == chat_id and ac.stage == DESCRIPTION:  # there is no more than one instance per chat
-            ac.description = sanitize_text(update.message.text)
-            ac.stage = NEXT
-            context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
-            next_appointment(update, context)
-            return
-    """
-
 
 def next_appointment(update, context):
     keyboard = [[InlineKeyboardButton("Yes", callback_data="yes"),
@@ -251,16 +204,6 @@ def next_appointment(update, context):
                                       chat_id=ac.chat_id,
                                       message_id=ac.message_id,
                                       reply_markup=InlineKeyboardMarkup(keyboard))
-
-    # todo OLD
-    """
-    for ac in AppointmentCreator.getinstances():
-        if ac.chat_id == chat_id:
-            context.bot.edit_message_text(text="Data saved. Create another appointment?",
-                                          chat_id=ac.chat_id,
-                                          message_id=ac.message_id,
-                                          reply_markup=InlineKeyboardMarkup(keyboard))
-    """
 
 
 def process_custom_keyboard_reply(update, context):
@@ -332,63 +275,6 @@ def process_custom_keyboard_reply(update, context):
 
         return
 
-    # todo OLD
-    """
-    for ac in AppointmentCreator.getinstances():
-        if ac.chat_id == chat_id:
-            print("s: ", ac.stage)
-            if ac.stage == TYPE:
-                if data == "ONCE":
-                    ac.type = "ONCE"
-                    calendar(update, context)
-                elif data == "EVERY_N_DAYS":
-                    ac.type = "EVERY_N_DAYS"
-                    calendar(update, context, text="Please select the first occurrence: ")
-                    # todo
-                elif data == "NTH-WEEKDAY":
-                    ac.type = "NTH-WEEKDAY"
-                    # todo
-                elif data == "NUM":
-                    ac.type = "NUM"
-                    # todo
-                ac.stage = DATE
-            elif ac.stage == DATE:
-                mode, date = telegramcalendar.process_calendar_selection(context.bot, update)
-                if mode == "BACK":
-                    ac.stage = TYPE
-                    appointment_type(update, context)
-                elif mode == "DAY":
-                    ac.datetime = date
-                    ac.stage = TIME
-                    clock(update, context)
-            elif ac.stage == TIME:
-                mode, value = telegramclock.process_clock_selections(update, context)
-                if mode == "BACK":
-                    ac.stage = DATE
-                    calendar(update, context)
-                    return
-                elif mode == "HOUR":
-                    ac.datetime = ac.datetime.replace(hour=value)
-                    ac.set_hour = True
-                elif mode == "MINUTE":
-                    ac.datetime = ac.datetime.replace(minute=value)
-                    ac.set_minute = True
-
-                if ac.set_minute and ac.set_hour:
-                    ac.stage = DESCRIPTION
-                    description(update, context)
-
-            elif ac.stage == NEXT:
-                if data == "yes":
-                    ac.next_command()
-                    appointment_type(update, context)
-
-                elif data == "no":
-                    ac.finalize()
-
-            return
-    """
-
     send_expired_message(message_id, chat_id, context.bot)
 
 
@@ -444,18 +330,6 @@ def cancel(update, context):
                                       message_id=ac.message_id)
         update.message.reply_text("Canceled creation - create a new appointment with /start or get help with /help")
         ac.destroy()
-
-    # todo OLD
-    """    
-    for ac in AppointmentCreator.getinstances():
-        if ac.chat_id == chat_id:
-            context.bot.edit_message_text(text="Creation canceled!",
-                                          chat_id=ac.chat_id,
-                                          message_id=ac.message_id)
-            update.message.reply_text("Canceled creation - create a new appointment with /start or get help with /help")
-            ac.destroy()
-            return
-    """
 
 
 def send_expired_message(message_id, chat_id, bot):

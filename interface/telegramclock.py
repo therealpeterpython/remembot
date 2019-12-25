@@ -1,7 +1,6 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 
-#print("{:02d}".format(1))
 HOURS = 24
 MINUTES = 60
 SEPARATOR = ";"
@@ -42,7 +41,6 @@ def create_clock():
 
     # --- Last row - Back --- #
     keyboard.append([InlineKeyboardButton("< Back to calendar", callback_data=create_callback_data("BACK", 0), switch_inline_query="aaaaa")])
-    #keyboard.append([InlineKeyboardButton("< Back to calendar", switch_inline_query="ASD")])
 
     return InlineKeyboardMarkup(keyboard)
 

@@ -29,16 +29,14 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
+# todo variablen in config file verschieben
 token_path = "token.txt"
 
-# Magic numbers - Don't change unless you now what you are doing! #
-# They are used to determine which inline keyboard sent the received data #
-#APPOINTMENT_TYPE_DATA_LENGTH = 1
-#CALENDAR_DATA_LENGTH = 4
-#CLOCK_DATA_LENGTH = 2
-
-# Data separator #
+# todo Konstanten in constants file verschieben
+# Callback data constants #
 SEPARATOR = ";"  # separates callback data
+NO = "0"
+YES = "1"
 
 # Appointment string constants #
 DELIMITER = 2 * SEPARATOR  # separates data fields in the appointment string
@@ -48,22 +46,23 @@ BLOCK_START = "A"  # appointment string blocks start with this char
 TIME_FORMAT = "%d.%m.%Y-%H:%M"
 
 # Appointment types #
-# todo nutzen
-ONCE, EVERY_N_DAYS, NTH_WEEKDAY, NUM = range(4)
+ONCE, EVERY_N_DAYS, NTH_WEEKDAY, NUM = [str(i) for i in range(4)]   # str (not int) for the inline buttons
 
 # Stages #
+# todo falls nötig andere typen wie DAY (simple calendar für NUM) hinzufügen; mit ORDER_FUNC synchron halten!!!
 TYPE, DATE, TIME, COUNT, WEEKDAY, DESCRIPTION, NEXT = range(7)
 
 # Process orders for the different types #
-# todo nutzen
+# todo falls nötig andere typen wie DAY (simple calendar für NUM) hinzufügen; mit ORDER_FUNC synchron halten!!!
 ORDER_ONCE = [TYPE, DATE, TIME, DESCRIPTION, NEXT]
 ORDER_EVERY_N_DAYS = [TYPE, DATE, TIME, COUNT, DESCRIPTION, NEXT]
 ORDER_NTH_WEEKDAY = [TYPE, DATE, TIME, COUNT, WEEKDAY, DESCRIPTION, NEXT]
 ORDER_NUM = [TYPE, DATE, TIME, DESCRIPTION, NEXT]
+ORDERS = {ONCE: ORDER_ONCE, EVERY_N_DAYS: ORDER_EVERY_N_DAYS, NTH_WEEKDAY: ORDER_NTH_WEEKDAY, NUM: ORDER_NUM}
 
 
 class AppointmentCreator:
-    _instances2 = dict()
+    _instances = dict()
 
     def __str__(self):
         attrs = vars(self)
@@ -81,7 +80,7 @@ class AppointmentCreator:
         self.set_minute = False
         self.description = None
         self.command = ""
-        self._instances2[chat_id] = self
+        self._instances[chat_id] = self
 
     def create_command(self):
         # todo "format of the switch to inline argument(;; = 2xSEPARATOR): A;;ONCE;;13.09.2019-14:45;;My text;;A;;NTHDAY;;3x0;;14:45;;My text;;A;;NUM;;13;;14:45;;My text"
@@ -115,11 +114,11 @@ class AppointmentCreator:
         self.destroy()
 
     def destroy(self):
-        del self.__class__._instances2[self.chat_id]
+        del self.__class__._instances[self.chat_id]
 
     @classmethod
     def getinstance(cls, key):
-        d = cls._instances2
+        d = cls._instances
         return d[key] if key in d else None
 
 
@@ -141,8 +140,8 @@ def start(update, context):
 
 def appointment_type(update, context, text="Please select a type: "):
     print("-- appointment_type")
-    keyboard = [[InlineKeyboardButton("Once", callback_data="ONCE"), InlineKeyboardButton("N-Days distance", callback_data="EVERY_N_DAYS")],
-                [InlineKeyboardButton("NTH-Weekday", callback_data="NTH-WEEKDAY"), InlineKeyboardButton("Num", callback_data="NUM")]]
+    keyboard = [[InlineKeyboardButton("Once", callback_data=ONCE), InlineKeyboardButton("N-Days distance", callback_data=EVERY_N_DAYS)],
+                [InlineKeyboardButton("NTH-Weekday", callback_data=NTH_WEEKDAY), InlineKeyboardButton("Num", callback_data=NUM)]]
     markup = InlineKeyboardMarkup(keyboard)
 
     if update.message:  # if we got here by a new message
@@ -174,6 +173,13 @@ def clock(update, context, text="Please select a time: "):
                                   reply_markup=telegramclock.create_clock())
 
 
+def count(update, context):
+    pass  # todo
+
+def weekday(update, context):
+    pass  # todo
+
+
 def description(update, context, text="Please type in your description: "):
     print("-- description")
     query = update.callback_query
@@ -188,14 +194,14 @@ def description_handler(update, context):
     ac = AppointmentCreator.getinstance(chat_id)
     if ac and ac.stage == DESCRIPTION:
         ac.description = sanitize_text(update.message.text)
-        ac.stage = NEXT
+        ac.stage = ORDERS[ac.type][(ORDERS[ac.type].index(ac.stage) + 1) % len(ORDERS[ac.type])]
         context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
-        next_appointment(update, context)
+        ORDERS_FUNC[int(ac.stage)](update, context)
 
 
 def next_appointment(update, context):
-    keyboard = [[InlineKeyboardButton("Yes", callback_data="yes"),
-                 InlineKeyboardButton("No", callback_data="no")]]
+    keyboard = [[InlineKeyboardButton("Yes", callback_data=YES),
+                 InlineKeyboardButton("No", callback_data=NO)]]
     chat_id = update.message.chat.id
     ac = AppointmentCreator.getinstance(chat_id)
     if ac:
@@ -225,34 +231,23 @@ def process_custom_keyboard_reply(update, context):
     if ac:
         print("s: ", ac.stage)
         if ac.stage == TYPE:
-            if data == "ONCE":
-                ac.type = "ONCE"
-                calendar(update, context)
-            elif data == "EVERY_N_DAYS":
-                ac.type = "EVERY_N_DAYS"
-                calendar(update, context, text="Please select the first occurrence: ")
-                # todo
-            elif data == "NTH-WEEKDAY":
-                ac.type = "NTH-WEEKDAY"
-                # todo
-            elif data == "NUM":
-                ac.type = "NUM"
-                # todo
-            ac.stage = DATE
+            ac.type = data
+            ac.stage = ORDERS[ac.type][(ORDERS[ac.type].index(ac.stage)+1) % len(ORDERS[ac.type])]
+            ORDERS_FUNC[int(ac.stage)](update, context)
         elif ac.stage == DATE:
             mode, date = telegramcalendar.process_calendar_selection(context.bot, update)
             if mode == "BACK":
-                ac.stage = TYPE
-                appointment_type(update, context)
+                ac.stage = ORDERS[ac.type][(ORDERS[ac.type].index(ac.stage) - 1) % len(ORDERS[ac.type])]
             elif mode == "DAY":
                 ac.datetime = date
-                ac.stage = TIME
-                clock(update, context)
+                ac.stage = ORDERS[ac.type][(ORDERS[ac.type].index(ac.stage) + 1) % len(ORDERS[ac.type])]
+            ORDERS_FUNC[int(ac.stage)](update, context)
+
         elif ac.stage == TIME:
             mode, value = telegramclock.process_clock_selections(update, context)
             if mode == "BACK":
-                ac.stage = DATE
-                calendar(update, context)
+                ac.stage = ORDERS[ac.type][(ORDERS[ac.type].index(ac.stage) - 1) % len(ORDERS[ac.type])]
+                ORDERS_FUNC[int(ac.stage)](update, context)
                 return
             elif mode == "HOUR":
                 ac.datetime = ac.datetime.replace(hour=value)
@@ -262,15 +257,13 @@ def process_custom_keyboard_reply(update, context):
                 ac.set_minute = True
 
             if ac.set_minute and ac.set_hour:
-                ac.stage = DESCRIPTION
-                description(update, context)
-
+                ac.stage = ORDERS[ac.type][(ORDERS[ac.type].index(ac.stage) + 1) % len(ORDERS[ac.type])]
+                ORDERS_FUNC[int(ac.stage)](update, context)
         elif ac.stage == NEXT:
-            if data == "yes":
+            if data == YES:
                 ac.next_command()
                 appointment_type(update, context)
-
-            elif data == "no":
+            elif data == NO:
                 ac.finalize()
 
         return
@@ -290,12 +283,14 @@ def switch_to_pm(update, context):
     elif len(appointment_blocks) > 1:
         r[0].title = "Create appointments"
     else:
-        if appointment_blocks[0][1] == "ONCE":
+        if appointment_blocks[0][1] == ONCE:
             print("once")
             title = "{}\n{}".format(appointment_blocks[0][2], appointment_blocks[0][3])
-        elif appointment_blocks[0][1] == "NTH_WEEKDAY":
+        elif appointment_blocks[0][1] == EVERY_N_DAYS:
             title = "TODO"
-        elif appointment_blocks[0][1] == "NUM":
+        elif appointment_blocks[0][1] == NTH_WEEKDAY:
+            title = "TODO"
+        elif appointment_blocks[0][1] == NUM:
             title = "TODO"
         r[0].title = title
 
@@ -310,7 +305,7 @@ def add(update, context):
 
     for block in appointment_blocks:
         # todo create appointment for block
-        # todo write to chat.id which appointment was added
+        # todo write to chat.id which appointment was added (better: write a single message at the end)
         pass
 
 
@@ -323,7 +318,7 @@ def help(update, context):
 def cancel(update, context):
     chat_id = update.message.chat.id
     ac = AppointmentCreator.getinstance(chat_id)
-    # todo remove /cancel message
+    context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
     if ac:
         context.bot.edit_message_text(text="Creation canceled!",
                                       chat_id=ac.chat_id,
@@ -418,4 +413,5 @@ def main():
 
 
 if __name__ == '__main__':
+    ORDERS_FUNC = [appointment_type, calendar, clock, count, weekday, description, next_appointment]  # :'<
     main()

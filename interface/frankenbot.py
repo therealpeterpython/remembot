@@ -3,7 +3,7 @@
 # This program is dedicated to the public domain under the CC0 license.
 
 """
-todo
+todo texte
 First, a few handler functions are defined. Then, those functions are passed to
 the Dispatcher and registered at their respective places.
 Then, the bot is started and runs until we press Ctrl-C on the command line.
@@ -18,8 +18,8 @@ from uuid import uuid4
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, InlineQueryResultArticle, InputTextMessageContent
 from telegram.ext import Updater, InlineQueryHandler, CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 
-import sys
-
+from interface.config import *
+from interface.constants import *
 import telegramcalendar
 import telegramclock
 
@@ -28,37 +28,6 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 
 logger = logging.getLogger(__name__)
-
-# todo variablen in config file verschieben
-token_path = "token.txt"
-
-# todo Konstanten in constants file verschieben
-# Callback data constants #
-SEPARATOR = ";"  # separates callback data
-NO = "0"
-YES = "1"
-
-# Appointment string constants #
-DELIMITER = 2 * SEPARATOR  # separates data fields in the appointment string
-BLOCK_START = "A"  # appointment string blocks start with this char
-
-# Time format #
-TIME_FORMAT = "%d.%m.%Y-%H:%M"
-
-# Appointment types #
-ONCE, EVERY_N_DAYS, NTH_WEEKDAY, NUM = [str(i) for i in range(4)]   # str (not int) for the inline buttons
-
-# Stages #
-# todo falls nötig andere typen wie DAY (simple calendar für NUM) hinzufügen; mit ORDER_FUNC synchron halten!!!
-TYPE, DATE, TIME, COUNT, WEEKDAY, DESCRIPTION, NEXT = range(7)
-
-# Process orders for the different types #
-# todo falls nötig andere typen wie DAY (simple calendar für NUM) hinzufügen; mit ORDER_FUNC synchron halten!!!
-ORDER_ONCE = [TYPE, DATE, TIME, DESCRIPTION, NEXT]
-ORDER_EVERY_N_DAYS = [TYPE, DATE, TIME, COUNT, DESCRIPTION, NEXT]
-ORDER_NTH_WEEKDAY = [TYPE, DATE, TIME, COUNT, WEEKDAY, DESCRIPTION, NEXT]
-ORDER_NUM = [TYPE, DATE, TIME, DESCRIPTION, NEXT]
-ORDERS = {ONCE: ORDER_ONCE, EVERY_N_DAYS: ORDER_EVERY_N_DAYS, NTH_WEEKDAY: ORDER_NTH_WEEKDAY, NUM: ORDER_NUM}
 
 
 class AppointmentCreator:
@@ -100,7 +69,7 @@ class AppointmentCreator:
 
     def finalize(self):
         self.command += self.create_command()
-        keyboard = [[InlineKeyboardButton("Create & Back >", switch_inline_query=self.command)]]  # todo switch_inline_query
+        keyboard = [[InlineKeyboardButton("Create & Back >", switch_inline_query=self.command)]]
 
         if self.command.count(DELIMITER) > 3:  # more than one appointment
             text = self.command  # todo schöner machen
@@ -173,11 +142,13 @@ def clock(update, context, text="Please select a time: "):
                                   reply_markup=telegramclock.create_clock())
 
 
-def count(update, context):
-    pass  # todo
+def count(update, context, text="TODO"):
+    print("-- count")  # todo
 
-def weekday(update, context):
-    pass  # todo
+
+def weekday(update, context, text="TODO"):
+    # todo use telegramcalendar.create_weekdays()
+    print("-- weekday")  # todo
 
 
 def description(update, context, text="Please type in your description: "):
@@ -194,9 +165,9 @@ def description_handler(update, context):
     ac = AppointmentCreator.getinstance(chat_id)
     if ac and ac.stage == DESCRIPTION:
         ac.description = sanitize_text(update.message.text)
-        ac.stage = ORDERS[ac.type][(ORDERS[ac.type].index(ac.stage) + 1) % len(ORDERS[ac.type])]
+        ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) + 1]
         context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
-        ORDERS_FUNC[int(ac.stage)](update, context)
+        ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
 
 
 def next_appointment(update, context):
@@ -228,26 +199,26 @@ def process_custom_keyboard_reply(update, context):
     data = update.callback_query.data
 
     ac = AppointmentCreator.getinstance(chat_id)
-    if ac:
+    if ac and ac.message_id == message_id:
         print("s: ", ac.stage)
         if ac.stage == TYPE:
             ac.type = data
-            ac.stage = ORDERS[ac.type][(ORDERS[ac.type].index(ac.stage)+1) % len(ORDERS[ac.type])]
-            ORDERS_FUNC[int(ac.stage)](update, context)
+            ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) + 1]
+            ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
         elif ac.stage == DATE:
             mode, date = telegramcalendar.process_calendar_selection(context.bot, update)
-            if mode == "BACK":
-                ac.stage = ORDERS[ac.type][(ORDERS[ac.type].index(ac.stage) - 1) % len(ORDERS[ac.type])]
+            if mode == "BACK":  # todo back, day, hour and minute mit konstanten ersetzen
+                ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) - 1]
             elif mode == "DAY":
                 ac.datetime = date
-                ac.stage = ORDERS[ac.type][(ORDERS[ac.type].index(ac.stage) + 1) % len(ORDERS[ac.type])]
-            ORDERS_FUNC[int(ac.stage)](update, context)
+                ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) + 1]
+            ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
 
         elif ac.stage == TIME:
             mode, value = telegramclock.process_clock_selections(update, context)
             if mode == "BACK":
-                ac.stage = ORDERS[ac.type][(ORDERS[ac.type].index(ac.stage) - 1) % len(ORDERS[ac.type])]
-                ORDERS_FUNC[int(ac.stage)](update, context)
+                ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) - 1]
+                ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
                 return
             elif mode == "HOUR":
                 ac.datetime = ac.datetime.replace(hour=value)
@@ -257,21 +228,27 @@ def process_custom_keyboard_reply(update, context):
                 ac.set_minute = True
 
             if ac.set_minute and ac.set_hour:
-                ac.stage = ORDERS[ac.type][(ORDERS[ac.type].index(ac.stage) + 1) % len(ORDERS[ac.type])]
-                ORDERS_FUNC[int(ac.stage)](update, context)
+                ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) + 1]
+                ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
         elif ac.stage == NEXT:
             if data == YES:
                 ac.next_command()
                 appointment_type(update, context)
             elif data == NO:
                 ac.finalize()
-
-        return
-
-    send_expired_message(message_id, chat_id, context.bot)
+    else:
+        send_expired_message(message_id, chat_id, context.bot)
 
 
 def switch_to_pm(update, context):
+    """
+    The InlineQueryHandler for the bot. It shows the switch_pm button
+    and the create appointment buttons for the prepared appointments.
+
+    :param update:
+    :param context:
+    :return:
+    """
     # todo
     print("-- switch_to_pm")
     appointment_blocks = process_appointment_str(update.inline_query.query)
@@ -369,10 +346,10 @@ def process_appointment_str(app_str):
     parameter_blocks = [parameter[i:i+4] for i in range(0, len(parameter), 4)]
     ret = parameter_blocks
 
-    if len(parameter) % 4 != 0 or not app_str.strip():
+    if len(parameter) % 4 != 0 or not app_str.strip():  # todo magic number 4 (ist 4 mit den anderen datentypen noch korrekt??)
         ret = None
     else:
-        for block in parameter_blocks:
+        for block in parameter_blocks:  # check if every block has the right start token (hence we conclude the block is correct)
             if block[0] != BLOCK_START:
                 ret = None
 
@@ -413,5 +390,9 @@ def main():
 
 
 if __name__ == '__main__':
-    ORDERS_FUNC = [appointment_type, calendar, clock, count, weekday, description, next_appointment]  # :'<
+    ORDERS_FUNC = {TYPE: appointment_type, DATE: calendar, TIME: clock, COUNT: count, WEEKDAY: weekday,
+                   DESCRIPTION: description, NEXT: next_appointment}  # :'<
+    # if i made a mistake and don't have ORDERS_FUNC and the stages synced
+    if len(ORDERS_FUNC) != NUM_STAGES:
+        raise Exception("Wrong number of stages or functions!")
     main()

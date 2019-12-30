@@ -1,14 +1,15 @@
+"""
+todo
+"""
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-
-HOURS = 24
-MINUTES = 60
-SEPARATOR = ";"
+from interface.constants import *
 
 
 def create_callback_data(action, time):
     """ Create the callback data associated to each button"""
-    return ";".join([action, str(time)])
+    return SEPARATOR.join([action, str(time)])
 
 
 def separate_callback_data(data):

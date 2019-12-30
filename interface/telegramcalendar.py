@@ -3,7 +3,7 @@
 # A library that allows to create an inline calendar keyboard.
 # grcanosa https://github.com/grcanosa
 #
-# Modified by therealpeterpython github.com/therealpeterpython (2019)
+# Modified by therealpeterpython github.com/therealpeterpython/remembot (2019)
 """
 Base methods for calendar keyboard creation and processing.
 """
@@ -11,8 +11,8 @@ Base methods for calendar keyboard creation and processing.
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
 import datetime
 import calendar
+from interface.constants import *
 
-SEPARATOR = ";"
 
 def create_callback_data(action, year, month, day):
     """ Create the callback data associated to each button"""
@@ -101,3 +101,10 @@ def process_calendar_selection(bot, update):
         bot.answer_callback_query(callback_query_id=query.id, text="Something went wrong!")
         # UNKNOWN
     return ret_data
+
+
+def create_weekdays():
+    keyboard = list()
+    for day in ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]:
+        keyboard.append(InlineKeyboardButton(day, callback_data=day))
+    return InlineKeyboardMarkup(keyboard)

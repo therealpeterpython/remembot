@@ -18,13 +18,11 @@ TIME_FORMAT = "%d.%m.%Y-%H:%M"
 ONCE, EVERY_N_DAYS, NTH_WEEKDAY, NUM = [str(i) for i in range(4)]   # str (not int) for the inline buttons
 
 # Stages #
-# todo falls nötig andere typen wie DAY (simple calendar für NUM) hinzufügen; mit ORDER_FUNC synchron halten!!!
 NUM_STAGES = 7
 TYPE, DATE, TIME, COUNT, WEEKDAY, DESCRIPTION, NEXT = range(NUM_STAGES)
 
 # Process orders for the different appointment types #
 # The order is used to determine the next function from the ORDERS_FUNC list #
-# todo falls nötig andere typen wie DAY (simple calendar für NUM) hinzufügen; mit ORDER_FUNC synchron halten!!!
 ORDER_ONCE = [TYPE, DATE, TIME, DESCRIPTION, NEXT]
 ORDER_EVERY_N_DAYS = [TYPE, COUNT, DATE, TIME, DESCRIPTION, NEXT]
 ORDER_NTH_WEEKDAY = [TYPE, COUNT, WEEKDAY, TIME, DESCRIPTION, NEXT]

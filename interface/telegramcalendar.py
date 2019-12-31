@@ -16,7 +16,7 @@ from interface.constants import *
 
 def create_callback_data(action, year, month, day):
     """ Create the callback data associated to each button"""
-    return ";".join([action, str(year), str(month), str(day)])
+    return SEPARATOR.join([action, str(year), str(month), str(day)])
 
 
 def separate_callback_data(data):
@@ -104,7 +104,12 @@ def process_calendar_selection(bot, update):
 
 
 def create_weekdays():
+    """
+    Creates an inline keyboard for the seven weekdays.
+
+    :return: Returns the InlineKeyboardMarkup object
+    """
     keyboard = list()
     for day in ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]:
         keyboard.append(InlineKeyboardButton(day, callback_data=day))
-    return InlineKeyboardMarkup(keyboard)
+    return InlineKeyboardMarkup([keyboard])

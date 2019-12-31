@@ -20,8 +20,8 @@ from telegram.ext import Updater, InlineQueryHandler, CommandHandler, CallbackQu
 
 from interface.config import *
 from interface.constants import *
-import telegramcalendar
-import telegramclock
+import interface.telegramcalendar as telegramcalendar
+import interface.telegramclock as telegramclock
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -142,13 +142,17 @@ def clock(update, context, text="Please select a time: "):
                                   reply_markup=telegramclock.create_clock())
 
 
-def count(update, context, text="TODO"):
+def count(update, context, text="Please type in the number of days: "):
     print("-- count")  # todo
 
 
-def weekday(update, context, text="TODO"):
-    # todo use telegramcalendar.create_weekdays()
-    print("-- weekday")  # todo
+def weekday(update, context, text="Please select the weekday: "):
+    print("-- weekday")
+    query = update.callback_query
+    context.bot.edit_message_text(text=text,
+                                  chat_id=query.message.chat_id,
+                                  message_id=query.message.message_id,
+                                  reply_markup=telegramcalendar.create_weekdays())
 
 
 def description(update, context, text="Please type in your description: "):
@@ -205,6 +209,8 @@ def process_custom_keyboard_reply(update, context):
             ac.type = data
             ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) + 1]
             ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
+        elif ac.stage == COUNT:
+            pass  # todo
         elif ac.stage == DATE:
             mode, date = telegramcalendar.process_calendar_selection(context.bot, update)
             if mode == "BACK":  # todo back, day, hour and minute mit konstanten ersetzen
@@ -213,7 +219,8 @@ def process_custom_keyboard_reply(update, context):
                 ac.datetime = date
                 ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) + 1]
             ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
-
+        elif ac.stage == WEEKDAY:
+            pass  # todo
         elif ac.stage == TIME:
             mode, value = telegramclock.process_clock_selections(update, context)
             if mode == "BACK":

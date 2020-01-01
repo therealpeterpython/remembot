@@ -44,6 +44,8 @@ class AppointmentCreator:
 
         self.stage = TYPE
         self.type = None
+        self.count = None
+        self.weekday = None
         self.datetime = None
         self.set_hour = False
         self.set_minute = False
@@ -52,6 +54,7 @@ class AppointmentCreator:
         self._instances[chat_id] = self
 
     def create_command(self):
+        # todo format checken und abhängig davon das command bauen
         # todo "format of the switch to inline argument(;; = 2xSEPARATOR): A;;ONCE;;13.09.2019-14:45;;My text;;A;;NTHDAY;;3x0;;14:45;;My text;;A;;NUM;;13;;14:45;;My text"
         return DELIMITER.join([BLOCK_START, self.type, self.datetime.strftime(TIME_FORMAT), self.description])
 
@@ -205,29 +208,52 @@ def process_custom_keyboard_reply(update, context):
     ac = AppointmentCreator.getinstance(chat_id)
     if ac and ac.message_id == message_id:
         print("s: ", ac.stage)
+        # todo back button abfragen rausziehen und vorher einmal abfangen (dazu alle BACK callback_datas vereinheitlichen)
+        #      ggf. auch alle ignore rausziehen (dazu IGNORE ballback_data vereinheitlichen)
+        #      ggf. ggf. dann möglich auch alle nächste stage rauszuiehen (einfach al else fall, weil sonst keine
+        #      möglichkeit neben ignore und back übrig bleibt? -> prüfen)
+        if data == BACK:
+            print("- in back")
+            ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) - 1]
+            ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
+            return
+        print("- after back")
+
         if ac.stage == TYPE:
             ac.type = data
             ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) + 1]
             ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
         elif ac.stage == COUNT:
-            pass  # todo
+            ac.count = data
+            ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) + 1]
+            ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
         elif ac.stage == DATE:
             mode, date = telegramcalendar.process_calendar_selection(context.bot, update)
-            if mode == "BACK":  # todo back, day, hour and minute mit konstanten ersetzen
+            if mode == "BACK":  # todo back, day, hour and minute ggf. mit konstanten ersetzen
+                raise Exception("Reached unreachable BACK!")
                 ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) - 1]
             elif mode == "DAY":
                 ac.datetime = date
                 ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) + 1]
+            elif not mode:
+                return
             ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
         elif ac.stage == WEEKDAY:
-            pass  # todo
+            weekday = telegramcalendar.process_weekdays_selection(update)
+            if weekday:
+                ac.weekday = data
+                ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) + 1]
+                ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
         elif ac.stage == TIME:
             mode, value = telegramclock.process_clock_selections(update, context)
+
             if mode == "BACK":
+                raise Exception("Reached unreachable BACK!")
                 ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) - 1]
                 ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
                 return
             elif mode == "HOUR":
+                print("hour")
                 ac.datetime = ac.datetime.replace(hour=value)
                 ac.set_hour = True
             elif mode == "MINUTE":

@@ -1,9 +1,14 @@
+# todo ggf. enums nutzen
+
 # Clock constants #
 HOURS = 24
 MINUTES = 60
 
 # Callback data constants #
 SEPARATOR = ";"  # separates callback data
+WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+IGNORE = "IGNORE"
+BACK = "BACK"
 NO = "0"
 YES = "1"
 

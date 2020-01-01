@@ -31,15 +31,18 @@ def create_calendar(year=None, month=None):
     :param int month: Month to use in the calendar, if None the current month is used.
     :return: Returns the InlineKeyboardMarkup object with the calendar.
     """
+
     now = datetime.datetime.now()
     if year == None: year = now.year
     if month == None: month = now.month
     data_ignore = create_callback_data("IGNORE", year, month, 0)
     keyboard = []
+
     # First row - Month and Year
     row = []
     row.append(InlineKeyboardButton(calendar.month_name[month] + " " + str(year), callback_data=data_ignore))
     keyboard.append(row)
+
     # Second row - Week Days
     row = []
     for day in ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]:
@@ -55,31 +58,33 @@ def create_calendar(year=None, month=None):
             else:
                 row.append(InlineKeyboardButton(str(day), callback_data=create_callback_data("DAY", year, month, day)))
         keyboard.append(row)
+
     # Last row - Buttons
     row = []
     row.append(InlineKeyboardButton("<", callback_data=create_callback_data("PREV-MONTH", year, month, day)))
     row.append(InlineKeyboardButton(" ", callback_data=data_ignore))
     row.append(InlineKeyboardButton(">", callback_data=create_callback_data("NEXT-MONTH", year, month, day)))
     keyboard.append(row)
-    keyboard.append([InlineKeyboardButton("<  Back to type selection", callback_data=create_callback_data("BACK", year, month, 0))])
+    keyboard.append([InlineKeyboardButton("<  Back", callback_data=BACK)])
 
     return InlineKeyboardMarkup(keyboard)
 
 
 def process_calendar_selection(bot, update):
     """
-    Process the callback_query. This method generates a new calendar if forward or
-    backward is pressed. This method should be called inside a CallbackQueryHandler.
+    Process the callback_query for the calendar. This method generates a new calendar if
+    forward or backward is pressed. This method should be called inside a CallbackQueryHandler.
     :param telegram.Bot bot: The bot, as provided by the CallbackQueryHandler
     :param telegram.Update update: The update, as provided by the CallbackQueryHandler
-    :return: Returns a tuple (String, datetime.datetime), indicating which action is choosen
+    :return: Returns a tuple (String, datetime.datetime), indicating which action is chosen
                 and returning the date if so.
     """
+
     ret_data = ("", None)
     query = update.callback_query
     (action, year, month, day) = separate_callback_data(query.data)
     curr = datetime.datetime(int(year), int(month), 1)
-    if action == "IGNORE":
+    if action == IGNORE:
         bot.answer_callback_query(callback_query_id=query.id)
     elif action == "DAY":
         ret_data = "DAY", datetime.datetime(int(year), int(month), int(day))
@@ -109,7 +114,31 @@ def create_weekdays():
 
     :return: Returns the InlineKeyboardMarkup object
     """
+
+    row = list()
     keyboard = list()
-    for day in ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]:
-        keyboard.append(InlineKeyboardButton(day, callback_data=day))
-    return InlineKeyboardMarkup([keyboard])
+
+    keyboard.append([InlineKeyboardButton("Weekdays", callback_data=IGNORE)])
+
+    for day in WEEKDAYS:
+        row.append(InlineKeyboardButton(day, callback_data=day))
+    keyboard.append(row)
+
+    keyboard.append([InlineKeyboardButton("<  Back", callback_data=BACK)])
+    return InlineKeyboardMarkup(keyboard)
+
+
+def process_weekdays_selection(update):
+    """
+    Process the callback_query for the weekdays.
+    :param telegram.Update update: The update, as provided by the CallbackQueryHandler
+    :return: Returns the weekday if one was chosen.
+    """
+
+    data = update.callback_query.data
+    if data in WEEKDAYS:
+        return data
+
+
+
+

@@ -14,6 +14,8 @@ bot.
 """
 import logging
 from uuid import uuid4
+import datetime
+import calendar
 
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, InlineQueryResultArticle, InputTextMessageContent
 from telegram.ext import Updater, InlineQueryHandler, CommandHandler, CallbackQueryHandler, MessageHandler, Filters
@@ -34,10 +36,12 @@ class AppointmentCreator:
     _instances = dict()
 
     def __str__(self):
+        print("- __str__")
         attrs = vars(self)
         return ', '.join("%s: %s" % item for item in attrs.items())
 
-    def __init__(self, chat_id, message_id, bot, from_chat_id=None, from_chat_name=None):
+    def __init__(self, chat_id, message_id, bot):
+        print("- __init__")
         self.chat_id = chat_id
         self.message_id = message_id
         self.bot = bot
@@ -46,7 +50,8 @@ class AppointmentCreator:
         self.type = None
         self.count = None
         self.weekday = None
-        self.datetime = None
+        self.date = None
+        self.time = datetime.time()
         self.set_hour = False
         self.set_minute = False
         self.description = None
@@ -54,30 +59,65 @@ class AppointmentCreator:
         self._instances[chat_id] = self
 
     def create_command(self):
-        # todo format checken und abhängig davon das command bauen
-        # todo "format of the switch to inline argument(;; = 2xSEPARATOR): A;;ONCE;;13.09.2019-14:45;;My text;;A;;NTHDAY;;3x0;;14:45;;My text;;A;;NUM;;13;;14:45;;My text"
-        return DELIMITER.join([BLOCK_START, self.type, self.datetime.strftime(TIME_FORMAT), self.description])
+        print("- create_command")
+        # todo "format of the switch to inline argument(;; = 2xSEPARATOR):
+        #  A;;ONCE;;13.09.2019;;14:45;;My text
+        #  A;;EVERY_N_DAYS;;14;;13.09.2019;;14:45;;My text
+        #  A;;NTH_WEEKDAY;;2;;<MONDAY>;;14:45;;My text
+        #  A;;NUM;;13.09.2019;;14:45;;My text
+
+        if self.type == ONCE:
+            command = DELIMITER.join([BLOCK_START, ONCE, self.date.strftime(DATE_FORMAT), self.time.strftime(TIME_FORMAT), self.description])
+        elif self.type == EVERY_N_DAYS:
+            command = DELIMITER.join([BLOCK_START, EVERY_N_DAYS, self.count, self.date.strftime(DATE_FORMAT), self.time.strftime(TIME_FORMAT), self.description])
+        elif self.type == NTH_WEEKDAY:
+            command = DELIMITER.join([BLOCK_START, NTH_WEEKDAY, self.count, self.weekday, self.time.strftime(TIME_FORMAT), self.description])
+        elif self.type == NUM:
+            command = DELIMITER.join([BLOCK_START, NUM, self.date.strftime(DATE_FORMAT), self.time.strftime(TIME_FORMAT), self.description])
+        else:
+            raise ValueError("'{}' is not a valid type!".format(self.type))
+
+        return command
 
     def next_command(self):
+        print("- next_command")
         self.command += self.create_command() + DELIMITER
         self.reset()
 
     def reset(self):
+        print("- reset")
         self.stage = TYPE
         self.type = None
-        self.datetime = None
+        self.date = None
+        self.time = datetime.time()
         self.set_hour = False
         self.set_minute = False
         self.description = None
 
     def finalize(self):
+        print("- finalize")
+        # todo self.datetime in self.date und self.time aufsplitten
+        # todo die verschiedenen fälle unterschieden und dann vernünftig die erstellten Termine anzeigen
+        # todo "format of the switch to inline argument(;; = 2xSEPARATOR):
+        #  A;;ONCE;;13.09.2019;;14:45;;My text
+        #  A;;EVERY_N_DAYS;;14;;13.09.2019;;14:45;;My text
+        #  A;;NTH_WEEKDAY;;2;;<MONDAY>;;14:45;;My text
+        #  A;;NUM;;13.09.2019;;14:45;;My text
         self.command += self.create_command()
         keyboard = [[InlineKeyboardButton("Create & Back >", switch_inline_query=self.command)]]
-
-        if self.command.count(DELIMITER) > 3:  # more than one appointment
-            text = self.command  # todo schöner machen
-        else:  # just one appointment
-            text = "{} {}: {}".format(self.type.capitalize(), self.datetime.strftime(TIME_FORMAT), self.description)
+        appointment_blocks = process_appointment_str(self.command)
+        text = ""
+        for block in appointment_blocks:
+            if block[1] == ONCE:
+                text += "= Once at {} {}: \"{}\"\n".format(*block[2:])
+            elif block[1] == EVERY_N_DAYS:
+                text += "= Every {} days at {}, starting with the {}: {}\n".format(block[2], block[4], block[3], block[5])
+            elif block[1] == NTH_WEEKDAY:
+                text += "= Every {}. {} at {}: {}\n".format(block[2], calendar.day_name[int(block[3])], block[4], block[5])
+            elif block[1] == NUM:
+                text += "= Every month at {} {}: {}\n".format(*block[2:])
+            else:
+                raise ValueError("'{}' is not a valid type!".format(block[1]))
 
         self.bot.edit_message_text(text=text,
                                    chat_id=self.chat_id,
@@ -86,10 +126,12 @@ class AppointmentCreator:
         self.destroy()
 
     def destroy(self):
+        print("- destroy")
         del self.__class__._instances[self.chat_id]
 
     @classmethod
     def getinstance(cls, key):
+        print("- getinstance")
         d = cls._instances
         return d[key] if key in d else None
 
@@ -118,7 +160,7 @@ def appointment_type(update, context, text="Please select a type: "):
 
     if update.message:  # if we got here by a new message
         msg = update.message.reply_text(text, reply_markup=markup)
-    elif update.callback_query:  # if we got here by a back button
+    elif update.callback_query:  # if we got here by a back button or as another appointment
         query = update.callback_query
         msg = context.bot.edit_message_text(text=text,
                                             chat_id=query.message.chat_id,
@@ -172,18 +214,18 @@ def description_handler(update, context):
     ac = AppointmentCreator.getinstance(chat_id)
     if ac and ac.stage == DESCRIPTION:
         ac.description = sanitize_text(update.message.text)
-        ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) + 1]
+        ac.stage = next_stage(ac.type, ac.stage)
         context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
-        ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
+        STAGE_FUNCTIONS[ac.stage](update, context, **get_parameters(ac.type, ac.stage))  # call the stage function
 
 
 def next_appointment(update, context):
+    print("-- next_appointment")
     keyboard = [[InlineKeyboardButton("Yes", callback_data=YES),
                  InlineKeyboardButton("No", callback_data=NO)]]
     chat_id = update.message.chat.id
-    ac = AppointmentCreator.getinstance(chat_id)
-    if ac:
-        ac.description = sanitize_text(update.message.text)
+    ac = AppointmentCreator.getinstance(chat_id)  # there is no callback_queue to get the right message id
+    if ac:  # there should(!) be no case where there are no ac when this method is called
         context.bot.edit_message_text(text="Data saved. Create another appointment?",
                                       chat_id=ac.chat_id,
                                       message_id=ac.message_id,
@@ -206,70 +248,51 @@ def process_custom_keyboard_reply(update, context):
     data = update.callback_query.data
 
     ac = AppointmentCreator.getinstance(chat_id)
-    if ac and ac.message_id == message_id:
-        print("s: ", ac.stage)
-        # todo back button abfragen rausziehen und vorher einmal abfangen (dazu alle BACK callback_datas vereinheitlichen)
-        #      ggf. auch alle ignore rausziehen (dazu IGNORE ballback_data vereinheitlichen)
-        #      ggf. ggf. dann möglich auch alle nächste stage rauszuiehen (einfach al else fall, weil sonst keine
-        #      möglichkeit neben ignore und back übrig bleibt? -> prüfen)
-        if data == BACK:
-            print("- in back")
-            ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) - 1]
-            ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
+    if ac and ac.message_id == message_id:  # we have an AppointmentCreator object for this chat and this message
+        if data == BACK:  # go back to the previous stage
+            ac.set_hour = False
+            ac.set_minute = False
+            ac.stage = previous_stage(ac.type, ac.stage)
+            STAGE_FUNCTIONS[ac.stage](update, context, **get_parameters(ac.type, ac.stage))  # call the stage function
             return
-        print("- after back")
+        elif data == IGNORE:  # ignore the pressed button
+            return
 
         if ac.stage == TYPE:
             ac.type = data
-            ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) + 1]
-            ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
         elif ac.stage == COUNT:
             ac.count = data
-            ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) + 1]
-            ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
         elif ac.stage == DATE:
             mode, date = telegramcalendar.process_calendar_selection(context.bot, update)
-            if mode == "BACK":  # todo back, day, hour and minute ggf. mit konstanten ersetzen
-                raise Exception("Reached unreachable BACK!")
-                ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) - 1]
-            elif mode == "DAY":
-                ac.datetime = date
-                ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) + 1]
-            elif not mode:
-                return
-            ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
+            if mode != "DAY":
+                return  # can't move on to the next stage
+            ac.date = date
         elif ac.stage == WEEKDAY:
-            weekday = telegramcalendar.process_weekdays_selection(update)
-            if weekday:
-                ac.weekday = data
-                ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) + 1]
-                ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
+            ac.weekday = data
         elif ac.stage == TIME:
             mode, value = telegramclock.process_clock_selections(update, context)
-
-            if mode == "BACK":
-                raise Exception("Reached unreachable BACK!")
-                ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) - 1]
-                ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
-                return
-            elif mode == "HOUR":
-                print("hour")
-                ac.datetime = ac.datetime.replace(hour=value)
+            if mode == "HOUR":
+                ac.time = ac.time.replace(hour=value)
                 ac.set_hour = True
             elif mode == "MINUTE":
-                ac.datetime = ac.datetime.replace(minute=value)
+                ac.time = ac.time.replace(minute=value)
                 ac.set_minute = True
 
-            if ac.set_minute and ac.set_hour:
-                ac.stage = ORDERS[ac.type][ORDERS[ac.type].index(ac.stage) + 1]
-                ORDERS_FUNC[ac.stage](update, context, **PARAMETERS[ac.type].get(ac.stage, {}))
+            if not (ac.set_minute and ac.set_hour):
+                return  # can't move on to the next stage
         elif ac.stage == NEXT:
             if data == YES:
                 ac.next_command()
                 appointment_type(update, context)
             elif data == NO:
                 ac.finalize()
-    else:
+            return  # we move on 'by hand'
+
+        # If we didn't encounter a return we can move on to the next stage
+        ac.stage = next_stage(ac.type, ac.stage)
+        STAGE_FUNCTIONS[ac.stage](update, context, **get_parameters(ac.type, ac.stage))  # call the stage function
+
+    else:  # we don't have an AppointmentCreator object
         send_expired_message(message_id, chat_id, context.bot)
 
 
@@ -277,12 +300,11 @@ def switch_to_pm(update, context):
     """
     The InlineQueryHandler for the bot. It shows the switch_pm button
     and the create appointment buttons for the prepared appointments.
-
+    todo
     :param update:
     :param context:
     :return:
     """
-    # todo
     print("-- switch_to_pm")
     appointment_blocks = process_appointment_str(update.inline_query.query)
     r = [InlineQueryResultArticle(id=uuid4(),
@@ -293,22 +315,14 @@ def switch_to_pm(update, context):
     elif len(appointment_blocks) > 1:
         r[0].title = "Create appointments"
     else:
-        if appointment_blocks[0][1] == ONCE:
-            print("once")
-            title = "{}\n{}".format(appointment_blocks[0][2], appointment_blocks[0][3])
-        elif appointment_blocks[0][1] == EVERY_N_DAYS:
-            title = "TODO"
-        elif appointment_blocks[0][1] == NTH_WEEKDAY:
-            title = "TODO"
-        elif appointment_blocks[0][1] == NUM:
-            title = "TODO"
-        r[0].title = title
+        r[0].title = "Create appointment"
 
     update.inline_query.answer(r, switch_pm_text="Create new date for this group!", switch_pm_parameter="unused_but_necessary_parameter")
 
 
 def add(update, context):
     print("-- add")
+    # todo wenn keine args mit übergeben wurden direkt an /start weiterleiten
     appointment_str = " ".join(context.args)
     appointment_blocks = process_appointment_str(appointment_str)
     print(appointment_blocks)
@@ -322,10 +336,12 @@ def add(update, context):
 # todo
 def help(update, context):
     """Send a message when the command /help is issued."""
+    print("-- help")
     update.message.reply_text('Help!')
 
 
 def cancel(update, context):
+    print("-- cancel")
     chat_id = update.message.chat.id
     ac = AppointmentCreator.getinstance(chat_id)
     context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
@@ -338,6 +354,7 @@ def cancel(update, context):
 
 
 def send_expired_message(message_id, chat_id, bot):
+    print("-- send_expired_message")
     bot.edit_message_text(text="*Session expired* \nPlease try again with /start or get some support with /help",
                           chat_id=chat_id,
                           message_id=message_id,
@@ -347,46 +364,61 @@ def send_expired_message(message_id, chat_id, bot):
 # todo takes /delete command and returns a list of appointments as customreplykeyboard. Click one of them returns a yes or
 # todo no crk and then deletes the appointment or cancels
 def delete_handler(update, context):
-    pass  # todo
+    print("-- delete_handler")  # todo
 
 
 def error(update, context):
     """Log Errors caused by Updates."""
-    logger.warning('Update "%s" caused error "%s"', update, context.error)
+    print("-- error")
+    logger.warning('Error "%s" caused by update "%s"', context.error, update)
 
 
 def sanitize_text(text):
     """
-    2*SEPARATOR is used as delimiter for the final inline command so it may not
-    be in the appointment description.
+    DELIMITER is used as delimiter for the final inline command and BLOCK_START is used to split the appointment block
+    so they may not appear in the appointment description.
 
     :param text: String to sanitize
-    :return: Sanitized string
+    :return: Sanitized string unequal BLOCK_START and without DELIMITER
     """
+    print("-- sanitize_text")
     while True:
         if DELIMITER in text:
             text = text.replace(DELIMITER, SEPARATOR)
+        elif text == BLOCK_START:
+            text += " "
         else:
             break
     return text
 
 
-# splits the appointment string in blocks for the (maybe) multiple appointments and removes the BLOCK_START symbol
+# splits the appointment string in blocks for the (maybe) multiple appointments
 # return none if its not a valid appointments string
 def process_appointment_str(app_str):
+    # todo die appointment typen abfangen und entsprechend behandeln
     print("-- process_appointment_str")
     parameter = app_str.split(DELIMITER)
-    parameter_blocks = [parameter[i:i+4] for i in range(0, len(parameter), 4)]
-    ret = parameter_blocks
+    index = [i for i, p in enumerate(parameter) if p == BLOCK_START]
+    index.append(len(parameter))
+    parameter_blocks = [parameter[index[i]: index[i+1]] for i in range(len(index)-1)]
+    for block in parameter_blocks:  # check that each block has the right length (from this we conclude that the block is correct)
+        if len(block) not in [5, 6]:
+            return
 
-    if len(parameter) % 4 != 0 or not app_str.strip():  # todo magic number 4 (ist 4 mit den anderen datentypen noch korrekt??)
-        ret = None
-    else:
-        for block in parameter_blocks:  # check if every block has the right start token (hence we conclude the block is correct)
-            if block[0] != BLOCK_START:
-                ret = None
+    print("parameter_blocks: ", parameter_blocks)
+    return parameter_blocks
 
-    return ret
+
+def next_stage(type, stage):
+    return ORDERS[type][ORDERS[type].index(stage) + 1]
+
+
+def previous_stage(type, stage):
+    return ORDERS[type][ORDERS[type].index(stage) - 1]
+
+
+def get_parameters(type, stage):
+    return PARAMETERS[type].get(stage, {})
 
 
 def main():
@@ -423,9 +455,11 @@ def main():
 
 
 if __name__ == '__main__':
-    ORDERS_FUNC = {TYPE: appointment_type, DATE: calendar, TIME: clock, COUNT: count, WEEKDAY: weekday,
-                   DESCRIPTION: description, NEXT: next_appointment}  # :'<
-    # if i made a mistake and don't have ORDERS_FUNC and the stages synced
-    if len(ORDERS_FUNC) != NUM_STAGES:
+    # Mapping of the stages to their functions #
+    STAGE_FUNCTIONS = {TYPE: appointment_type, DATE: calendar, TIME: clock, COUNT: count, WEEKDAY: weekday,
+                       DESCRIPTION: description, NEXT: next_appointment}  # :'<
+    # if i made a mistake and don't have STAGE_FUNCTIONS and the stages synced
+    if len(STAGE_FUNCTIONS) != NUM_STAGES:
         raise Exception("Wrong number of stages or functions!")
+
     main()

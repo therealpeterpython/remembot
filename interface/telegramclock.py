@@ -21,11 +21,10 @@ def create_clock():
     hour_columns = 4
     minute_blocks = [0, 15, 30, 45]
 
-    data_ignore = create_callback_data("IGNORE", 0)
     keyboard = list()
 
     # --- First row - Hours string --- #
-    keyboard.append([InlineKeyboardButton("Hours", callback_data=data_ignore)])
+    keyboard.append([InlineKeyboardButton("Hours", callback_data=IGNORE)])
 
     # --- Next rows - All hours --- #
     row = list()
@@ -34,7 +33,7 @@ def create_clock():
                          for j in range(i*hour_columns, (i+1)*hour_columns)])
 
     # --- Next row - Minutes string --- #
-    keyboard.append([InlineKeyboardButton("Minutes", callback_data=data_ignore)])
+    keyboard.append([InlineKeyboardButton("Minutes", callback_data=IGNORE)])
 
     # --- Next rows - Minute blocks --- #
     keyboard.append([InlineKeyboardButton(str(i), callback_data=create_callback_data("MINUTE", i))

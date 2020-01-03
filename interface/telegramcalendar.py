@@ -35,18 +35,17 @@ def create_calendar(year=None, month=None):
     now = datetime.datetime.now()
     if year == None: year = now.year
     if month == None: month = now.month
-    data_ignore = create_callback_data("IGNORE", year, month, 0)
     keyboard = []
 
     # First row - Month and Year
     row = []
-    row.append(InlineKeyboardButton(calendar.month_name[month] + " " + str(year), callback_data=data_ignore))
+    row.append(InlineKeyboardButton(calendar.month_name[month] + " " + str(year), callback_data=IGNORE))
     keyboard.append(row)
 
     # Second row - Week Days
     row = []
     for day in ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]:
-        row.append(InlineKeyboardButton(day, callback_data=data_ignore))
+        row.append(InlineKeyboardButton(day, callback_data=IGNORE))
     keyboard.append(row)
 
     my_calendar = calendar.monthcalendar(year, month)
@@ -54,7 +53,7 @@ def create_calendar(year=None, month=None):
         row = []
         for day in week:
             if (day == 0):
-                row.append(InlineKeyboardButton(" ", callback_data=data_ignore))
+                row.append(InlineKeyboardButton(" ", callback_data=IGNORE))
             else:
                 row.append(InlineKeyboardButton(str(day), callback_data=create_callback_data("DAY", year, month, day)))
         keyboard.append(row)
@@ -62,7 +61,7 @@ def create_calendar(year=None, month=None):
     # Last row - Buttons
     row = []
     row.append(InlineKeyboardButton("<", callback_data=create_callback_data("PREV-MONTH", year, month, day)))
-    row.append(InlineKeyboardButton(" ", callback_data=data_ignore))
+    row.append(InlineKeyboardButton(" ", callback_data=IGNORE))
     row.append(InlineKeyboardButton(">", callback_data=create_callback_data("NEXT-MONTH", year, month, day)))
     keyboard.append(row)
     keyboard.append([InlineKeyboardButton("<  Back", callback_data=BACK)])
@@ -85,6 +84,7 @@ def process_calendar_selection(bot, update):
     (action, year, month, day) = separate_callback_data(query.data)
     curr = datetime.datetime(int(year), int(month), 1)
     if action == IGNORE:
+        raise Exception("Unreachable IGNORE in telegramcalendar")
         bot.answer_callback_query(callback_query_id=query.id)
     elif action == "DAY":
         ret_data = "DAY", datetime.datetime(int(year), int(month), int(day))
@@ -101,6 +101,7 @@ def process_calendar_selection(bot, update):
                               message_id=query.message.message_id,
                               reply_markup=create_calendar(int(ne.year), int(ne.month)))
     elif action == "BACK":
+        raise Exception("Unreachable BACK in telegramcalendar")
         ret_data = "BACK", None
     else:
         bot.answer_callback_query(callback_query_id=query.id, text="Something went wrong!")
@@ -120,7 +121,7 @@ def create_weekdays():
 
     keyboard.append([InlineKeyboardButton("Weekdays", callback_data=IGNORE)])
 
-    for day in WEEKDAYS:
+    for day in WEEKDAYS_ABBR:
         row.append(InlineKeyboardButton(day, callback_data=day))
     keyboard.append(row)
 
@@ -128,6 +129,8 @@ def create_weekdays():
     return InlineKeyboardMarkup(keyboard)
 
 
+'''
+not needed
 def process_weekdays_selection(update):
     """
     Process the callback_query for the weekdays.
@@ -136,9 +139,9 @@ def process_weekdays_selection(update):
     """
 
     data = update.callback_query.data
-    if data in WEEKDAYS:
+    if data in WEEKDAYS_ABBR:
         return data
-
+'''
 
 
 

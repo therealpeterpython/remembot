@@ -133,6 +133,13 @@ def get_valid_day(year, month, day):
 # Creates a valid date
 # If a parameter is out of range it will be trimmed at max or min
 def create_valid_date(year, month, day, hour, minute):
+    if month > 12:
+        year += 1
+        month -= 12
+    if month < 1:
+        year -= 1
+        month += 12
+
     num_days = cal.monthrange(year,month)[1]
 
     if minute > 59:

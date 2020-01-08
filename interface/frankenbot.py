@@ -1,16 +1,14 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# This program is dedicated to the public domain under the CC0 license.
 
 """
-todo texte
-First, a few handler functions are defined. Then, those functions are passed to
-the Dispatcher and registered at their respective places.
-Then, the bot is started and runs until we press Ctrl-C on the command line.
-Usage:
-Basic inline bot example. Applies different text transformations.
-Press Ctrl-C on the command line or send a signal to the process to stop the
-bot.
+This is the version v2.0 of the rememgram bot written by
+therealpeterpython (github.com/therealpeterpython).
+You can find the bot and my other work at
+github.com/therealpeterpython/remembot.
+Feel free to submit issues and requests via github.
+
+This program is licensed under CC BY-SA 4.0 by therealpeterpython.
 """
 import logging
 from uuid import uuid4
@@ -20,16 +18,18 @@ import calendar
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, InlineQueryResultArticle, InputTextMessageContent
 from telegram.ext import Updater, InlineQueryHandler, CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 
+import rememgram
 from interface.config import *
 from interface.constants import *
 import interface.telegramcalendar as telegramcalendar
 import interface.telegramclock as telegramclock
 
 # Enable logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+logging.basicConfig(format='\n%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO, filename=log_path, filemode='a')
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
 
 
 class AppointmentCreator:
@@ -63,15 +63,15 @@ class AppointmentCreator:
         # todo "format of the switch to inline argument(;; = 2xSEPARATOR):
         #  A;;ONCE;;13.09.2019;;14:45;;My text
         #  A;;EVERY_N_DAYS;;14;;13.09.2019;;14:45;;My text
-        #  A;;NTH_WEEKDAY;;2;;<MONDAY>;;14:45;;My text
+        #  A;;NTH_WEEKDAY;;2;;MONDAY;;14:45;;My text
         #  A;;NUM;;13.09.2019;;14:45;;My text
 
         if self.type == ONCE:
             command = DELIMITER.join([BLOCK_START, ONCE, self.date.strftime(DATE_FORMAT), self.time.strftime(TIME_FORMAT), self.description])
         elif self.type == EVERY_N_DAYS:
-            command = DELIMITER.join([BLOCK_START, EVERY_N_DAYS, self.count, self.date.strftime(DATE_FORMAT), self.time.strftime(TIME_FORMAT), self.description])
+            command = DELIMITER.join([BLOCK_START, EVERY_N_DAYS, str(self.count), self.date.strftime(DATE_FORMAT), self.time.strftime(TIME_FORMAT), self.description])
         elif self.type == NTH_WEEKDAY:
-            command = DELIMITER.join([BLOCK_START, NTH_WEEKDAY, self.count, self.weekday, self.time.strftime(TIME_FORMAT), self.description])
+            command = DELIMITER.join([BLOCK_START, NTH_WEEKDAY, str(self.count), str(self.weekday), self.time.strftime(TIME_FORMAT), self.description])
         elif self.type == NUM:
             command = DELIMITER.join([BLOCK_START, NUM, self.date.strftime(DATE_FORMAT), self.time.strftime(TIME_FORMAT), self.description])
         else:
@@ -96,13 +96,6 @@ class AppointmentCreator:
 
     def finalize(self):
         print("- finalize")
-        # todo self.datetime in self.date und self.time aufsplitten
-        # todo die verschiedenen fälle unterschieden und dann vernünftig die erstellten Termine anzeigen
-        # todo "format of the switch to inline argument(;; = 2xSEPARATOR):
-        #  A;;ONCE;;13.09.2019;;14:45;;My text
-        #  A;;EVERY_N_DAYS;;14;;13.09.2019;;14:45;;My text
-        #  A;;NTH_WEEKDAY;;2;;<MONDAY>;;14:45;;My text
-        #  A;;NUM;;13.09.2019;;14:45;;My text
         self.command += self.create_command()
         keyboard = [[InlineKeyboardButton("Create & Back >", switch_inline_query=self.command)]]
         appointment_blocks = process_appointment_str(self.command)
@@ -141,13 +134,15 @@ class AppointmentCreator:
 def start(update, context):
     """Send a message when the command /start is issued."""
     print("-- start")
+    print("um: ", update.message)
+    # todo erklärungstext der terminarten und bessere bezeichner
     chat_id = update.message.chat.id
     ac = AppointmentCreator.getinstance(chat_id)
     if ac:
         send_expired_message(ac.message_id, ac.chat_id, context.bot)
         ac.destroy()
 
-    context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
+    #context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
     message = appointment_type(update, context)
     AppointmentCreator(chat_id=update.message.chat.id, message_id=message.message_id, bot=context.bot)
 
@@ -188,16 +183,22 @@ def clock(update, context, text="Please select a time: "):
 
 
 def count(update, context, text="Please type in the number of days: "):
-    print("-- count")  # todo
+    print("-- count")
+    query = update.callback_query
+    context.bot.edit_message_text(text=text,
+                                  chat_id=query.message.chat_id,
+                                  message_id=query.message.message_id)
 
 
 def weekday(update, context, text="Please select the weekday: "):
     print("-- weekday")
-    query = update.callback_query
-    context.bot.edit_message_text(text=text,
-                                  chat_id=query.message.chat_id,
-                                  message_id=query.message.message_id,
-                                  reply_markup=telegramcalendar.create_weekdays())
+    chat_id = update.message.chat.id
+    ac = AppointmentCreator.getinstance(chat_id)  # there is no callback_queue to get the right message id
+    if ac:  # there should(!) be no case where there are no ac when this method is called
+        context.bot.edit_message_text(text=text,
+                                      chat_id=ac.chat_id,
+                                      message_id=ac.message_id,
+                                      reply_markup=telegramcalendar.create_weekdays())
 
 
 def description(update, context, text="Please type in your description: "):
@@ -208,12 +209,17 @@ def description(update, context, text="Please type in your description: "):
                                   message_id=query.message.message_id)
 
 
-def description_handler(update, context):
-    print("-- description_handler")
+def text_handler(update, context):
+    print("-- text_handler")
     chat_id = update.message.chat.id
     ac = AppointmentCreator.getinstance(chat_id)
-    if ac and ac.stage == DESCRIPTION:
-        ac.description = sanitize_text(update.message.text)
+    if ac:
+        if ac.stage == DESCRIPTION:
+            ac.description = sanitize_text(update.message.text)
+        elif ac.stage == COUNT:
+            ac.count = int(update.message.text.strip())
+        else:
+            return
         ac.stage = next_stage(ac.type, ac.stage)
         context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
         STAGE_FUNCTIONS[ac.stage](update, context, **get_parameters(ac.type, ac.stage))  # call the stage function
@@ -296,16 +302,15 @@ def process_custom_keyboard_reply(update, context):
         send_expired_message(message_id, chat_id, context.bot)
 
 
-def switch_to_pm(update, context):
+def inline_query_handler(update, context):
     """
     The InlineQueryHandler for the bot. It shows the switch_pm button
     and the create appointment buttons for the prepared appointments.
-    todo
-    :param update:
-    :param context:
-    :return:
+
+    :param update: the telegram.Update object
+    :param context: the telegram.ext.CallbackContext object
     """
-    print("-- switch_to_pm")
+    print("-- inline_query_handler")
     appointment_blocks = process_appointment_str(update.inline_query.query)
     r = [InlineQueryResultArticle(id=uuid4(),
                                   title="None",
@@ -322,29 +327,34 @@ def switch_to_pm(update, context):
 
 def add(update, context):
     print("-- add")
-    # todo wenn keine args mit übergeben wurden direkt an /start weiterleiten
+    # todo TESTEN: wenn keine args mit übergeben wurden direkt an /start weiterleiten
+    if not context.args:
+        start(update, context)
     appointment_str = " ".join(context.args)
     appointment_blocks = process_appointment_str(appointment_str)
     print(appointment_blocks)
 
     for block in appointment_blocks:
         # todo create appointment for block
-        # todo write to chat.id which appointment was added (better: write a single message at the end)
+        # todo change the implement new types in remegram
         pass
+    # todo write to chat.id which appointments were created
 
 
-# todo
 def help(update, context):
     """Send a message when the command /help is issued."""
     print("-- help")
-    update.message.reply_text('Help!')
+    with open(help_path, "r") as fp:
+        text = fp.read()
+    update.message.reply_text(text=text,
+                              parse_mode="Markdown")
 
 
 def cancel(update, context):
     print("-- cancel")
     chat_id = update.message.chat.id
     ac = AppointmentCreator.getinstance(chat_id)
-    context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
+    #context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
     if ac:
         context.bot.edit_message_text(text="Creation canceled!",
                                       chat_id=ac.chat_id,
@@ -355,22 +365,100 @@ def cancel(update, context):
 
 def send_expired_message(message_id, chat_id, bot):
     print("-- send_expired_message")
-    bot.edit_message_text(text="*Session expired* \nPlease try again with /start or get some support with /help",
+    with open(expired_path, "r") as fp:
+        text = fp.read()
+    bot.edit_message_text(text=text,
                           chat_id=chat_id,
                           message_id=message_id,
                           parse_mode="Markdown")
 
 
+# generates temporary token to unlock admin features
+def generate_token(update, context):
+    print("-- generate_token")
+    tmp_token = uuid4()
+    with open(tmp_token_path, "w") as fp:
+        fp.write(str(tmp_token))
+
+    print("Temporary token: ", str(tmp_token))
+
+
+# returns the token and deletes it on the disk if there is one
+def get_token():
+    try:
+        with open(tmp_token_path, "r+") as fp:
+            token = fp.read()
+            fp.truncate(0)
+    except IOError:
+        token = None
+    return token
+
+
+# sends the message in sendall_path if the user has teh right tmp token
+def send_all(update, context):
+    print("-- send_all")
+
+    token = get_token()
+    if not token:
+        report("Could not get the temporary token in send_all!", update)
+        return
+    elif len(context.args) != 1:
+        report("Wrong number of arguments in send_all!", update)
+        return
+    elif context.args[0] != token:
+        report("Wrong token in send_all!", update)
+        return
+
+    with open(sendall_path, "r") as fp:
+        text = fp.read()
+
+    chat_ids = [task.chat_id for task in rememgram.load_object("../tasks.pkl")]
+    print(chat_ids)
+    for chat_id in chat_ids:
+        print("TODO test this function!")
+        #context.bot.send_message(chat_id=int(chat_id), text=text, parse_mode="Markdown")
+
+
+# returns the send all message for checking
+def get_send_all(update, context):
+    print("-- get_send_all")  # todo
+
+
 # todo takes /delete command and returns a list of appointments as customreplykeyboard. Click one of them returns a yes or
 # todo no crk and then deletes the appointment or cancels
-def delete_handler(update, context):
-    print("-- delete_handler")  # todo
+def delete(update, context):
+    print("-- delete")  # todo
+
+
+# shows the appointments as text list
+def info(update, context):
+    print("-- info")  # todo
+
+
+# shows informations about the bot. therealpeterpython and the repo
+def about(update, context):
+    with open(about_path, "r") as fp:
+        text = fp.read()
+    update.message.reply_text(text=text, parse_mode="Markdown", disable_web_page_preview=True)
+
+
+# reports illegal attempts or fails to use admin features
+def report(text, update=None):
+    print("-- report")
+    if update:
+        text += " -> Update: " + str(update)
+
+    now = datetime.datetime.now()
+    result = "{}: {}".format(now, text)
+    print(result)
+    with open(reports_path, "a") as fp:
+        fp.write(result)
 
 
 def error(update, context):
     """Log Errors caused by Updates."""
     print("-- error")
-    logger.warning('Error "%s" caused by update "%s"', context.error, update)
+    logger.warning('Error "%s" caused by update "%s"', context.error, update, exc_info=1)
 
 
 def sanitize_text(text):
@@ -395,14 +483,14 @@ def sanitize_text(text):
 # splits the appointment string in blocks for the (maybe) multiple appointments
 # return none if its not a valid appointments string
 def process_appointment_str(app_str):
-    # todo die appointment typen abfangen und entsprechend behandeln
     print("-- process_appointment_str")
     parameter = app_str.split(DELIMITER)
     index = [i for i, p in enumerate(parameter) if p == BLOCK_START]
     index.append(len(parameter))
     parameter_blocks = [parameter[index[i]: index[i+1]] for i in range(len(index)-1)]
+    block_length = {ONCE: 5, EVERY_N_DAYS: 6, NTH_WEEKDAY: 6, NUM: 5}
     for block in parameter_blocks:  # check that each block has the right length (from this we conclude that the block is correct)
-        if len(block) not in [5, 6]:
+        if block_length[block[1]] != len(block) or block[1] not in ORDERS:
             return
 
     print("parameter_blocks: ", parameter_blocks)
@@ -436,13 +524,18 @@ def main():
     # on different commands - answer in Telegram #
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("add", add))
-    dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("cancel", cancel))
+    dp.add_handler(CommandHandler("delete", delete))
+    dp.add_handler(CommandHandler("info", info))
+    dp.add_handler(CommandHandler("help", help))
+    dp.add_handler(CommandHandler("about", about))
+    dp.add_handler(CommandHandler("_gentoken", generate_token))
+    dp.add_handler(CommandHandler("_sendall", send_all))
     dp.add_handler(CallbackQueryHandler(process_custom_keyboard_reply))
 
-    dp.add_handler(MessageHandler(Filters.text, description_handler))
+    dp.add_handler(MessageHandler(Filters.text, text_handler))
 
-    dp.add_handler(InlineQueryHandler(switch_to_pm))
+    dp.add_handler(InlineQueryHandler(inline_query_handler))
 
     # log all errors #
     dp.add_error_handler(error)

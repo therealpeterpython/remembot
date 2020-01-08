@@ -2,6 +2,10 @@
 token.txt
 tokens.txt
 tasks.pkl
+log.txt
+sendall.txt
+tmp_token.txt
+reports.txt
 .idea/
 
 # Byte-compiled / optimized / DLL files

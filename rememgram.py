@@ -83,21 +83,21 @@ class task:
         now = dt.datetime.now()
         if format == "wd":  # (weekday) regular at every nth (i.e.) monday
             occ = get_nth_weekday(dt.datetime(now.year, now.month, 1, schedule.hour, schedule.minute), schedule.week_number, schedule.day)
-            prev = get_nth_weekday(create_valid_date(now.year, now.month-1,1, schedule.hour, schedule.minute), schedule.week_number, schedule.day)
+            prev = get_nth_weekday(subtract_one_month(dt.datetime(now.year, now.month, 1, schedule.hour, schedule.minute)), schedule.week_number, schedule.day)
 
             # If there wasnt a first execution now, then there wasnt a last execution also
             prev = prev if self.last_execution else None
             return occ if (occ - now).days < 0 else prev
 
-        elif format == "d": # (date) regular every (i.e.) 13.
+        elif format == "d":  # (date) regular every (e.g.) 13.
             # get the valid day for this month
             occ_day = get_valid_day(now.year, now.month, schedule.day)
             # create the valid occurrence date for this month
-            occ = create_valid_date(now.year, now.month, occ_day, schedule.hour, schedule.minute)
+            occ = dt.datetime(now.year, now.month, occ_day, schedule.hour, schedule.minute)
 
             # create the valid occurence date for the prev month(except the day)
             # we cant change the order of this since we have to ensure that now.month-1 is a valid month
-            prev = create_valid_date(now.year, now.month-1, 1, schedule.hour, schedule.minute)
+            prev = subtract_one_month(dt.datetime(now.year, now.month, 1, schedule.hour, schedule.minute))
             # now can we be sure that prev.year and prev.month are valid and we change to the right day
             prev.replace(day=get_valid_day(prev.year, prev.month, schedule.day))
 
@@ -108,7 +108,7 @@ class task:
             # otherwise the prev last month was the last one and gets returned
             return occ if (occ - now).days < 0 else prev
 
-        elif format == "swd":   # (single weekday) just once at the nth (i.e.) monday
+        elif format == "swd":   # (single weekday) just once at the nth (e.g.) monday
             occ = get_nth_weekday(dt.datetime(schedule.year, schedule.month, 1, schedule.hour, schedule.minute), schedule.week_number, schedule.day)
             return schedule if (occ - now).days < 0 else None
 
@@ -121,15 +121,30 @@ class task:
 
 
 # Caps the day at the max or min if necessary
-# Useful for transitions (i.e.) 30.1 -> 28.2
+# Useful for transitions (e.g.) 30.1 -> 28.2
 def get_valid_day(year, month, day):
-    num_days = cal.monthrange(year,month)[1]
+    num_days = cal.monthrange(year, month)[1]
     day = max(1, day)
     day = min(num_days, day)
-
     return day
 
 
+def subtract_one_month(t):
+    """Return a `datetime.date` or `datetime.datetime` (as given) that is
+    one month later.
+    Note that the resultant day of the month might change if the following
+    month has fewer days:
+        subtract_one_month(datetime.date(2010, 3, 31))
+        == datetime.date(2010, 2, 28)
+    """
+    one_day = dt.timedelta(days=1)
+    one_month_earlier = t
+    while one_month_earlier.month == t.month or one_month_earlier.day > t.day:
+        one_month_earlier -= one_day
+    return one_month_earlier
+
+# garbage
+"""
 # Creates a valid date
 # If a parameter is out of range it will be trimmed at max or min
 def create_valid_date(year, month, day, hour, minute):
@@ -170,6 +185,7 @@ def create_valid_date(year, month, day, hour, minute):
         day += cal.monthrange(year,month)[1]  # its the changed(prev) month!
 
     return dt.datetime(year, month, day, hour, minute)
+"""
 
 
 # Return the nth occurrence of week_day
@@ -189,7 +205,7 @@ def get_nth_weekday(the_date, nth_week, week_day):
 
 # a quick way to expand years after 2000
 # takes None, str and int as input type
-# (i.e.) 19 -> 2019
+# (e.g.) 19 -> 2019
 def expand_year(year):
     if not year:
         year = None
@@ -297,7 +313,7 @@ def parse_input(args):
     args = (args_string[:fst] + args_string[snd+1:]).split()
 
     if args[0] == "einmal" or args[0] == "once" or args[0] == "1x":
-        if len(args[1]) < 4:    # (i.e.) 'once 12. Monday 3.2019 8:30'
+        if len(args[1]) < 4:    # (e.g.) 'once 12. Monday 3.2019 8:30'
             format = "swd"
             week_number = int(args[1].split(".")[0])
             weekday = args[2]
@@ -307,7 +323,7 @@ def parse_input(args):
             hour = args[4].split(":")[0]
             minute = args[4].split(":")[1]
 
-        else:   # (i.e.) 'once 7.3.2019 9:30'
+        else:   # (e.g.) 'once 7.3.2019 9:30'
             format = "sd"
             tmp = args[1].split(".")
             day = tmp[0]
@@ -317,15 +333,15 @@ def parse_input(args):
             minute = args[2].split(":")[1]
 
     else:
-        if len(args) == 3:  # (i.e.) '3. Friday 3:14'
+        if len(args) == 3:  # (e.g.) '3. Friday 3:14'
             format = "wd"
             week_number = int(args[0].split(".")[0])
             weekday = args[1]
             day = days_lookup[weekday.lower()]
             hour = args[2].split(":")[0]
             minute = args[2].split(":")[1]
-        else:   # (i.e.) '2. 3:33'
-            if args[0].split(".")[1]:   # (i.e.) '2.12 3:33'
+        else:   # (e.g.) '2. 3:33'
+            if args[0].split(".")[1]:   # (e.g.) '2.12 3:33'
                 print("Wrong format!")
                 print(args, description)
                 raise ValueError

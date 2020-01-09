@@ -15,7 +15,7 @@ from uuid import uuid4
 import datetime
 import calendar
 
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton, InlineQueryResultArticle, InputTextMessageContent
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton, InlineQueryResultArticle, InputTextMessageContent, TelegramError
 from telegram.ext import Updater, InlineQueryHandler, CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 
 import rememgram
@@ -327,12 +327,14 @@ def inline_query_handler(update, context):
 
 def add(update, context):
     print("-- add")
-    # todo TESTEN: wenn keine args mit übergeben wurden direkt an /start weiterleiten
     if not context.args:
         start(update, context)
     appointment_str = " ".join(context.args)
     appointment_blocks = process_appointment_str(appointment_str)
-    print(appointment_blocks)
+
+    # if the appointment string was wrong
+    if not appointment_blocks:
+        update.message.reply_text(text="Couldn't understand this appointment! Get help with /help or create a new appointment with /start!")
 
     for block in appointment_blocks:
         # todo create appointment for block
@@ -402,7 +404,7 @@ def send_all(update, context):
     if not token:
         report("Could not get the temporary token in send_all!", update)
         return
-    elif len(context.args) != 1:
+    elif len(context.args) not in [1, 2]:
         report("Wrong number of arguments in send_all!", update)
         return
     elif context.args[0] != token:
@@ -411,17 +413,26 @@ def send_all(update, context):
 
     with open(sendall_path, "r") as fp:
         text = fp.read()
+    if not text:
+        raise IOError("Sendall file is empty!")
 
-    chat_ids = [task.chat_id for task in rememgram.load_object("../tasks.pkl")]
+    # if there is a second argument: send it just to the admin
+    if len(context.args) == 2:
+        update.message.reply_text(text=text, parse_mode="Markdown")
+        return
+
+    # get the chat ids and send the text to the chats
+    chat_ids = set([task.chat_id for task in rememgram.load_object("../tasks.pkl")])
     print(chat_ids)
+    num_send = 0
     for chat_id in chat_ids:
         print("TODO test this function!")
-        #context.bot.send_message(chat_id=int(chat_id), text=text, parse_mode="Markdown")
-
-
-# returns the send all message for checking
-def get_send_all(update, context):
-    print("-- get_send_all")  # todo
+        try:
+            #context.bot.send_message(chat_id=int(chat_id), text=text, parse_mode="Markdown")
+            num_send += 1
+        except TelegramError:
+            print("Telegram Error while sending!")
+    print(num_send, " messages were send!")
 
 
 # todo takes /delete command and returns a list of appointments as customreplykeyboard. Click one of them returns a yes or
@@ -488,8 +499,10 @@ def process_appointment_str(app_str):
     index = [i for i, p in enumerate(parameter) if p == BLOCK_START]
     index.append(len(parameter))
     parameter_blocks = [parameter[index[i]: index[i+1]] for i in range(len(index)-1)]
+
+    # check that each block has the right length (from this we conclude that the block is correct)
     block_length = {ONCE: 5, EVERY_N_DAYS: 6, NTH_WEEKDAY: 6, NUM: 5}
-    for block in parameter_blocks:  # check that each block has the right length (from this we conclude that the block is correct)
+    for block in parameter_blocks:
         if block_length[block[1]] != len(block) or block[1] not in ORDERS:
             return
 

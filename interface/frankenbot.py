@@ -491,6 +491,7 @@ def sanitize_text(text):
     return text
 
 
+# todo move this in own helper file (its used by the front and back-end)
 # splits the appointment string in blocks for the (maybe) multiple appointments
 # return none if its not a valid appointments string
 def process_appointment_str(app_str):
@@ -510,16 +511,12 @@ def process_appointment_str(app_str):
     return parameter_blocks
 
 
-def next_stage(type, stage):
-    return ORDERS[type][ORDERS[type].index(stage) + 1]
+# Helper functions #
+def next_stage(type, stage): return ORDERS[type][ORDERS[type].index(stage) + 1]
 
+def previous_stage(type, stage): return ORDERS[type][ORDERS[type].index(stage) - 1]
 
-def previous_stage(type, stage):
-    return ORDERS[type][ORDERS[type].index(stage) - 1]
-
-
-def get_parameters(type, stage):
-    return PARAMETERS[type].get(stage, {})
+def get_parameters(type, stage): return PARAMETERS[type].get(stage, {})
 
 
 def main():

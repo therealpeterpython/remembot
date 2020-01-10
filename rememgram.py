@@ -45,17 +45,6 @@ today = dt.datetime.today()
 #
 
 
-# todo add class Appointment
-#  with id
-#  with chat_id
-#  with last_execution = datetime.datetime(1, 1, 1, 0, 0)
-#  with type
-#  with date
-#  with time
-#  with count
-#  with weekday
-#  with description
-
 class Appointment:
     def __str__(self):
         attrs = vars(self)
@@ -96,7 +85,7 @@ class Appointment:
                 return self.last_execution < occ < now
 
 
-
+# todo OLD
 # Saves the time informations of a task
 #
 class schedule:
@@ -116,6 +105,7 @@ class schedule:
         return s
 
 
+# todo OLD
 # A task which contains an unique id, his description, schedule and chat id(so that it knows to which chat it belongs)
 class task:
     def __init__(self, id, description, schedule, chat_id):
@@ -196,7 +186,7 @@ def subtract_one_month(t):
         one_month_earlier -= one_day
     return one_month_earlier
 
-# garbage
+# todo garbage
 """
 # Creates a valid date
 # If a parameter is out of range it will be trimmed at max or min
@@ -266,7 +256,7 @@ def expand_year(year):
         year += 2000 if year < 2000 else 0
     return year
 
-
+# todo replace
 # adds a task with parameters args, chat_id='chat_id' and a hash of this as id
 def add_task(args, chat_id):
     tasks = load_tasks()
@@ -282,6 +272,7 @@ def add_task(args, chat_id):
     check_tasks()
 
 
+# todo ggf. rework
 # deletes all tasks with ids in 'remove_ids'
 def delete_tasks(remove_ids):
     tasks = load_tasks()
@@ -292,6 +283,7 @@ def delete_tasks(remove_ids):
     save_tasks(tasks)
 
 
+# todo ggf. rework
 # delete all tasks of given chat
 def delete_all_tasks(chat_id):
     tasks = load_tasks()
@@ -315,7 +307,7 @@ def get_tasks_by_chat():
 
     return tasks_by_chat
 
-
+# todo replace
 # check if a task has to be executed
 def check_tasks():
     tasks = load_tasks()
@@ -341,11 +333,13 @@ def check_tasks():
     save_tasks(tasks)
 
 
+# todo replace
 # executes a task
 def execute_task(task):
     rb.remind_task(task)
 
 
+# todo remove
 # parses the input it gets from the rem_bot (to add a task)
 def parse_input(args):
     description = ""

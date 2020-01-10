@@ -1,7 +1,10 @@
-# The "second backend" of the remembot
-# todo put more infos here
-#
-#
+"""
+todo put more infos here
+todo replace # with \""" in descriptions
+todo rename: task -> appointment
+
+
+"""
 
 from remembot.common.helper import process_appointment_str
 from remembot.common.constants import *
@@ -11,14 +14,7 @@ import calendar as cal
 import remembot.bot.rem_bot as rb
 import remembot.bot.frankenbot as bot
 import pickle
-#import sys
-
-# todo wtf
-days_lookup = {'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3, 'friday': 4, 'saturday': 5, 'sunday': 6, 'montag': 0, 'dienstag': 1, 'mittwoch': 2, 'donnerstag': 3, 'freitag': 4, 'samstag': 5, 'sonntag': 6}
-
-#today = dt.datetime.today()
-
-# todo rename: task -> appointment
+import sys
 
 
 class Appointment:
@@ -65,84 +61,6 @@ class Appointment:
         pass  # todo
 
 
-# todo OLD
-# Saves the time informations of a task
-#
-class schedule:
-    def __init__(self, format, day, hour, minute, week_number=None, year=None, month=None):
-        self.format = format
-        self.day = day
-        self.hour = hour
-        self.minute = minute
-        self.week_number = week_number
-        self.year = year
-        self.month = month
-
-    # gets invoked with str(a_schedule), usefull for debugging
-    def __str__(self):
-        lst = [self.format, self.day, self.hour, self.minute, self.week_number, self.year, self.month]
-        s = "schedule(" + ', '.join([str(e) for e in lst]) + ")"
-        return s
-
-
-# todo OLD
-# A task which contains an unique id, his description, schedule and chat id(so that it knows to which chat it belongs)
-class task:
-    def __init__(self, id, description, schedule, chat_id):
-        self.id = id
-        self.description = description
-        self.schedule = schedule
-        self.chat_id = chat_id
-        self.last_execution = None
-
-    # returns true if the task needs an execution
-    def need_execution(self):
-        return not (self.get_previous_occurance() == self.last_execution)
-
-    # gets the last time the task should have been executed
-    def get_previous_occurance(self):
-        schedule = self.schedule
-        format = schedule.format
-        now = dt.datetime.now()
-        if format == "wd":  # (weekday) regular at every nth (e.g.) monday
-            occ = get_nth_weekday(dt.datetime(now.year, now.month, 1, schedule.hour, schedule.minute), schedule.week_number, schedule.day)
-            prev = get_nth_weekday(subtract_one_month(dt.datetime(now.year, now.month, 1, schedule.hour, schedule.minute)), schedule.week_number, schedule.day)
-
-            # If there wasnt a first execution now, then there wasnt a last execution also
-            prev = prev if self.last_execution else None
-            return occ if (occ - now).days < 0 else prev
-
-        elif format == "d":  # (date) regular every (e.g.) 13.
-            # get the valid day for this month
-            occ_day = get_valid_day(now.year, now.month, schedule.day)
-            # create the valid occurrence date for this month
-            occ = dt.datetime(now.year, now.month, occ_day, schedule.hour, schedule.minute)
-
-            # create the valid occurence date for the prev month(except the day)
-            # we cant change the order of this since we have to ensure that now.month-1 is a valid month
-            prev = subtract_one_month(dt.datetime(now.year, now.month, 1, schedule.hour, schedule.minute))
-            # now can we be sure that prev.year and prev.month are valid and we change to the right day
-            prev.replace(day=get_valid_day(prev.year, prev.month, schedule.day))
-
-            # If there wasnt a first execution now, then there wasnt a last execution also
-            prev = prev if self.last_execution else None
-
-            # if the right date had already been this month it gets returned
-            # otherwise the prev last month was the last one and gets returned
-            return occ if (occ - now).days < 0 else prev
-
-        elif format == "swd":   # (single weekday) just once at the nth (e.g.) monday
-            occ = get_nth_weekday(dt.datetime(schedule.year, schedule.month, 1, schedule.hour, schedule.minute), schedule.week_number, schedule.day)
-            return schedule if (occ - now).days < 0 else None
-
-        elif format == "sd":    # (single date) just once some date
-            print("SD")
-            occ = dt.datetime(schedule.year, schedule.month, schedule.day, schedule.hour, schedule.minute)
-            print("OCC: "+str(occ))
-            print("NOW: "+str(now))
-            return schedule if (occ - now).days < 0 else None
-
-
 # Caps the day at the max or min if necessary
 # Useful for transitions (e.g.) 30.1 -> 28.2
 def get_valid_day(year, month, day):
@@ -165,50 +83,6 @@ def subtract_one_month(t):
     while one_month_earlier.month == t.month or one_month_earlier.day > t.day:
         one_month_earlier -= one_day
     return one_month_earlier
-
-# todo garbage
-"""
-# Creates a valid date
-# If a parameter is out of range it will be trimmed at max or min
-def create_valid_date(year, month, day, hour, minute):
-    if month > 12:
-        year += 1
-        month -= 12
-    if month < 1:
-        year -= 1
-        month += 12
-
-    num_days = cal.monthrange(year,month)[1]
-
-    if minute > 59:
-        hour += 1
-        minute -= 60
-    if hour > 23:
-        day += 1
-        hour -= 24
-    if day > num_days:
-        month += 1
-        day -= num_days
-    if month > 12:
-        year += 1
-        month -= 12
-
-    if minute < 0:
-        hour -= 1
-        minute += 60
-    if hour < 0:
-        day -= 1
-        hour += 24
-    if day < 1:
-        month -= 1
-    if month < 1:
-        year -= 1
-        month += 12
-    if day < 1: # looks ugly but is important in this order therewith the month can be corrected if necessary
-        day += cal.monthrange(year,month)[1]  # its the changed(prev) month!
-
-    return dt.datetime(year, month, day, hour, minute)
-"""
 
 
 # Return the nth occurrence of week_day
@@ -262,22 +136,6 @@ def add_appointment(app_str, chat_id):
 
     # save and check all appointments #
     save_tasks(appointments)
-    check_tasks()
-
-
-# todo OLD
-# adds a task with parameters args, chat_id='chat_id' and a hash of this as id
-def add_task(args, chat_id):
-    tasks = load_tasks()
-
-    description, format, day, hour, minute, week_number, year, month = parse_input(args)
-    id = hash(tuple(args+[chat_id]))
-    new_task = task(id,
-                    description,
-                    schedule(format, day, hour, minute, week_number, year, month),
-                    chat_id)
-    tasks.append(new_task)
-    save_tasks(tasks)
     check_tasks()
 
 
@@ -348,66 +206,6 @@ def check_tasks():
 # executes a task
 def execute(appointment):
     bot.remind(appointment)
-
-
-# todo remove
-# parses the input it gets from the rem_bot (to add a task)
-def parse_input(args):
-    description = ""
-    format = ""
-    day = -1
-    hour = -1
-    minute = -1
-    week_number = None
-    year = None
-    month = None
-
-    # get description
-    args_string = ' '.join(args).strip()
-    fst = args_string.index('"')
-    snd = args_string.index('"',fst+1)
-    description = args_string[fst+1:snd].strip()
-    args = (args_string[:fst] + args_string[snd+1:]).split()
-
-    if args[0] == "einmal" or args[0] == "once" or args[0] == "1x":
-        if len(args[1]) < 4:    # (e.g.) 'once 12. Monday 3.2019 8:30'
-            format = "swd"
-            week_number = int(args[1].split(".")[0])
-            weekday = args[2]
-            day = days_lookup[weekday.lower()]
-            month = int(args[3].split(".")[0])
-            year = args[3].split(".")[1]
-            hour = args[4].split(":")[0]
-            minute = args[4].split(":")[1]
-
-        else:   # (e.g.) 'once 7.3.2019 9:30'
-            format = "sd"
-            tmp = args[1].split(".")
-            day = tmp[0]
-            month = int(tmp[1])
-            year = tmp[2]
-            hour = args[2].split(":")[0]
-            minute = args[2].split(":")[1]
-
-    else:
-        if len(args) == 3:  # (e.g.) '3. Friday 3:14'
-            format = "wd"
-            week_number = int(args[0].split(".")[0])
-            weekday = args[1]
-            day = days_lookup[weekday.lower()]
-            hour = args[2].split(":")[0]
-            minute = args[2].split(":")[1]
-        else:   # (e.g.) '2. 3:33'
-            if args[0].split(".")[1]:   # (e.g.) '2.12 3:33'
-                print("Wrong format!")
-                print(args, description)
-                raise ValueError
-            format = "d"
-            day = args[0].split(".")[0]
-            hour = args[1].split(":")[0]
-            minute = args[1].split(":")[1]
-
-    return str(description), str(format), int(day), int(hour), int(minute), week_number, expand_year(year), month
 
 
 # todo cp to tasks.pkl.old and write to file

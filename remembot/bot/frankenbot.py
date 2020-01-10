@@ -18,12 +18,12 @@ import calendar
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, InlineQueryResultArticle, InputTextMessageContent, TelegramError
 from telegram.ext import Updater, InlineQueryHandler, CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 
-import remembot.rememgram.rememgram as rememgram
-from remembot.common import config
+from remembot.rememgram import rememgram
 from remembot.common.config import *
 from remembot.common.constants import *
-import remembot.bot.telegramcalendar as telegramcalendar
-import remembot.bot.telegramclock as telegramclock
+from remembot.common.helper import process_appointment_str
+from remembot.bot import telegramcalendar
+from remembot.bot import telegramclock
 
 
 # Enable logging
@@ -455,6 +455,11 @@ def about(update, context):
     update.message.reply_text(text=text, parse_mode="Markdown", disable_web_page_preview=True)
 
 
+# Remind the right chat of the appointment
+def remind(appointment):
+    bot.send_message(chat_id=appointment.chat_id, text=appointment.description)
+
+
 # reports illegal attempts or fails to use admin features
 def report(text, update=None):
     print("-- report")
@@ -493,26 +498,6 @@ def sanitize_text(text):
     return text
 
 
-# todo move this in own helper file (its used by the front and back-end)
-# splits the appointment string in blocks for the (maybe) multiple appointments
-# return none if its not a valid appointments string
-def process_appointment_str(app_str):
-    print("-- process_appointment_str")
-    parameter = app_str.split(DELIMITER)
-    index = [i for i, p in enumerate(parameter) if p == BLOCK_START]
-    index.append(len(parameter))
-    parameter_blocks = [parameter[index[i]: index[i+1]] for i in range(len(index)-1)]
-
-    # check that each block has the right length (from this we conclude that the block is correct)
-    block_length = {ONCE: 5, EVERY_N_DAYS: 6, NTH_WEEKDAY: 6, NUM: 5}
-    for block in parameter_blocks:
-        if block_length[block[1]] != len(block) or block[1] not in ORDERS:
-            return
-
-    print("parameter_blocks: ", parameter_blocks)
-    return parameter_blocks
-
-
 # Helper functions #
 def next_stage(type, stage): return ORDERS[type][ORDERS[type].index(stage) + 1]
 
@@ -523,12 +508,14 @@ def get_parameters(type, stage): return PARAMETERS[type].get(stage, {})
 
 def main():
     print("-- main")
+    global bot
     # Get token #
     with open(token_path, "r") as token_file:
         token = token_file.read()
 
     # Create the Updater and pass it your bot's token #
     updater = Updater(token, use_context=True)
+    bot = updater.bot
 
     # Get the dispatcher to register handlers #
     dp = updater.dispatcher

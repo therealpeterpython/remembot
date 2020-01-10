@@ -3,12 +3,13 @@
 #
 #
 
+from interface.config import *
+from interface.constants import *
+
 import datetime as dt
 import calendar as cal
 import rem_bot as rb
-
 import pickle
-
 #import sys
 
 
@@ -44,10 +45,62 @@ today = dt.datetime.today()
 #
 
 
+# todo add class Appointment
+#  with id
+#  with chat_id
+#  with last_execution = datetime.datetime(1, 1, 1, 0, 0)
+#  with type
+#  with date
+#  with time
+#  with count
+#  with weekday
+#  with description
+
+class Appointment:
+    def __str__(self):
+        attrs = vars(self)
+        return ', '.join("%s: %s" % item for item in attrs.items())
+
+    def __init__(self, id, chat_id, type, description, time, date=None, count=None, weekday=None):
+        self.id = id
+        self.chat_id = chat_id
+        self.last_execution = dt.datetime(1, 1, 1, 0, 0)
+        self.type = type
+        self.date = date
+        self.time = time
+        self.description = description
+        self.count = count
+        self.weekday = weekday
+
+        # todo testen
+        def needs_execution2(self):
+            now = dt.datetime.now()
+            if self.type == ONCE:
+                return dt.datetime.combine(self.date, self.time) < now
+            elif self.type == EVERY_N_DAYS:
+                appointment_datetime = dt.datetime.combine(self.date, self.time)
+                # gets the last time the task should have been executed
+                last_occurrence = appointment_datetime + dt.timedelta(
+                    days=(((now - appointment_datetime).days // self.count) * self.count))
+                return self.last_execution < last_occurrence < now and appointment_datetime < now
+            elif self.type == NTH_WEEKDAY:
+                # gets the occurrence this month
+                occurrence_current_month = get_nth_weekday(dt.datetime.combine(now.date(), self.time), self.count,
+                                                           self.weekday)
+                return self.last_execution < occurrence_current_month < now
+            elif self.type == NUM:
+                # get the valid day for this month
+                occ_day = get_valid_day(now.year, now.month, self.date.day)
+                # create the valid occurrence date for this month
+                occ = dt.datetime(now.year, now.month, occ_day, self.time.hour, self.time.minute)
+                return self.last_execution < occ < now
+
+
+
 # Saves the time informations of a task
 #
 class schedule:
-    def __init__(self,format,day,hour,minute,week_number=None,year=None,month=None):
+    def __init__(self, format, day, hour, minute, week_number=None, year=None, month=None):
         self.format = format
         self.day = day
         self.hour = hour
@@ -81,7 +134,7 @@ class task:
         schedule = self.schedule
         format = schedule.format
         now = dt.datetime.now()
-        if format == "wd":  # (weekday) regular at every nth (i.e.) monday
+        if format == "wd":  # (weekday) regular at every nth (e.g.) monday
             occ = get_nth_weekday(dt.datetime(now.year, now.month, 1, schedule.hour, schedule.minute), schedule.week_number, schedule.day)
             prev = get_nth_weekday(subtract_one_month(dt.datetime(now.year, now.month, 1, schedule.hour, schedule.minute)), schedule.week_number, schedule.day)
 
@@ -189,18 +242,17 @@ def create_valid_date(year, month, day, hour, minute):
 
 
 # Return the nth occurrence of week_day
-# in the month in the year given by the_date
+# in the month in the year given by date
 # If there are not enough occurences of the week_day in the month
 # then the nth_week parameter gets decresed by 1
-def get_nth_weekday(the_date, nth_week, week_day):
-    temp = the_date.replace(day=1)
-    adj = (week_day - temp.weekday()) % 7
-    temp += dt.timedelta(days=adj)
+def get_nth_weekday(date, nth_week, week_day):
+    temp = date.replace(day=1)
+    diff = (week_day - temp.weekday()) % 7
+    temp += dt.timedelta(days=diff)  # temp is now the first occurrence of the weekday in the given month
     temp += dt.timedelta(weeks=nth_week-1)
-    if temp.month > the_date.month:
-        return get_nth_weekday(the_date,nth_week-1, week_day)
-    else:
-        return temp
+    while temp.month != date.month:
+        temp.month -= dt.timedelta(weeks=1)
+    return temp
 
 
 # a quick way to expand years after 2000

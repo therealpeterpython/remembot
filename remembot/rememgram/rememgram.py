@@ -3,46 +3,22 @@
 #
 #
 
-from remembot.common.config import *
+from remembot.common.helper import process_appointment_str
 from remembot.common.constants import *
 
 import datetime as dt
 import calendar as cal
 import remembot.bot.rem_bot as rb
+import remembot.bot.frankenbot as bot
 import pickle
 #import sys
 
-
-#days = {0:"Monday", 1:"Tuesday", 2:"Wednesday", 3:"Thursday", 4:"Friday", 5:"Saturday", 6:"Sunday"}
-#months = {0:"January", 1:"February", 2:"March", 3:"April", 4:"May", 5:"June", 6:"July", 7:"August", 8:"September", 9:"October", 10:"November", 11:"December"}
-
-#days_de = {0:"Montag", 1:"Dienstag", 2:"Mittwoch", 3:"Donnerstag", 4:"Freitag", 5:"Samstag", 6:"Sonntag"}
-#months_de = {0:"Januar", 1:"Februar", 2:"März", 3:"April", 4:"Mai", 5:"Juni", 6:"Juli", 7:"August", 8:"September", 9:"Oktober", 10:"November", 11:"Dezember"}
-
+# todo wtf
 days_lookup = {'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3, 'friday': 4, 'saturday': 5, 'sunday': 6, 'montag': 0, 'dienstag': 1, 'mittwoch': 2, 'donnerstag': 3, 'freitag': 4, 'samstag': 5, 'sonntag': 6}
 
-today = dt.datetime.today()
+#today = dt.datetime.today()
 
-
-#
-#
-# Possible time formats:
-# - jeden nten wochentag wd jeden Monats um h:mm Uhr "n;wd;h:mm;wd" (weekday)
-# [- jeden nten wochentag wd jedes Mten Monats um h:mm Uhr "n;wd;M;h:mm;wdm" (weekdayMonth)]
-# [- jeden xten wochentag im Monat um h:mm Uhr "x;h:mm;wd" (weekday) [spezialfall von weekdayMonth, als solchen implementieren]]
-#
-# - jeden nten tag jeden Monats um h:mm uhr "n;h:mm;d" (date)
-# [- jeden nten tag jedes Mten Monats um h:mm uhr "n;M;h:mm;dm" (dateMonth)]
-# [- jeden xten tag im Monat um h:mm uhr "x;h:mm" (date) [spezialfall von dateMonth, als solchen implementieren]]
-#
-# - einmalig am nten wochentag wd im Mten monat im Jahr YYYY um h:mm "n;wd;M;YYYY;h:mm;swd" (singleWeekday)
-# - einmalig am nten Tag im Mten monat im Jahr YYYY um h:mm "n;M;YYYY;h:mm;sd" (singleDate)
-#
-# /add 3. Freitag 3:14 "Hier kommt die Beschreibung rein"
-# /add 2. 3:33 "Beschreibung"
-# /add einmal 2. Montag 3.2019 8:30 "Die Beschreibung"
-# /add einmal 7.3.2019 9:30 "Auch hier Beschreibung"
-#
+# todo rename: task -> appointment
 
 
 class Appointment:
@@ -61,28 +37,32 @@ class Appointment:
         self.count = count
         self.weekday = weekday
 
-        # todo testen
-        def needs_execution2(self):
-            now = dt.datetime.now()
-            if self.type == ONCE:
-                return dt.datetime.combine(self.date, self.time) < now
-            elif self.type == EVERY_N_DAYS:
-                appointment_datetime = dt.datetime.combine(self.date, self.time)
-                # gets the last time the task should have been executed
-                last_occurrence = appointment_datetime + dt.timedelta(
-                    days=(((now - appointment_datetime).days // self.count) * self.count))
-                return self.last_execution < last_occurrence < now and appointment_datetime < now
-            elif self.type == NTH_WEEKDAY:
-                # gets the occurrence this month
-                occurrence_current_month = get_nth_weekday(dt.datetime.combine(now.date(), self.time), self.count,
-                                                           self.weekday)
-                return self.last_execution < occurrence_current_month < now
-            elif self.type == NUM:
-                # get the valid day for this month
-                occ_day = get_valid_day(now.year, now.month, self.date.day)
-                # create the valid occurrence date for this month
-                occ = dt.datetime(now.year, now.month, occ_day, self.time.hour, self.time.minute)
-                return self.last_execution < occ < now
+    # todo testen
+    def needs_execution(self):
+        now = dt.datetime.now()
+        if self.type == ONCE:
+            return dt.datetime.combine(self.date, self.time) < now
+        elif self.type == EVERY_N_DAYS:
+            appointment_datetime = dt.datetime.combine(self.date, self.time)
+            # gets the last time the task should have been executed
+            last_occurrence = appointment_datetime + dt.timedelta(
+                days=(((now - appointment_datetime).days // self.count) * self.count))
+            return self.last_execution < last_occurrence < now and appointment_datetime < now
+        elif self.type == NTH_WEEKDAY:
+            # gets the occurrence this month
+            occurrence_current_month = get_nth_weekday(dt.datetime.combine(now.date(), self.time), self.count,
+                                                       self.weekday)
+            return self.last_execution < occurrence_current_month < now
+        elif self.type == NUM:
+            # get the valid day for this month
+            occ_day = get_valid_day(now.year, now.month, self.date.day)
+            # create the valid occurrence date for this month
+            occ = dt.datetime(now.year, now.month, occ_day, self.time.hour, self.time.minute)
+            return self.last_execution < occ < now
+
+    # returns a pretty string version of the appointment
+    def pprint(self):
+        pass  # todo
 
 
 # todo OLD
@@ -256,7 +236,36 @@ def expand_year(year):
         year += 2000 if year < 2000 else 0
     return year
 
-# todo replace
+
+# todo testen
+def add_appointment(app_str, chat_id):
+    # get all appointments #
+    appointments = load_tasks()
+
+    # split the appointment blocks #
+    appointment_blocks = process_appointment_str(app_str)
+
+    # process the blocks #
+    for block in appointment_blocks:
+        if block[1] == ONCE:
+            args = process_once(block)
+        elif block[1] == EVERY_N_DAYS:
+            args = process_every_n_days(block)
+        elif block[1] == NTH_WEEKDAY:
+            args = process_nth_weekday(block)
+        elif block[1] == NUM:
+            args = process_num(block)
+
+        id = hash(tuple(block + [chat_id]))
+        appointment = Appointment(id=id, **args)
+        appointments.append(appointment)
+
+    # save and check all appointments #
+    save_tasks(appointments)
+    check_tasks()
+
+
+# todo OLD
 # adds a task with parameters args, chat_id='chat_id' and a hash of this as id
 def add_task(args, chat_id):
     tasks = load_tasks()
@@ -272,22 +281,33 @@ def add_task(args, chat_id):
     check_tasks()
 
 
-# todo ggf. rework
+def process_once(parameters):
+    return {"type": ONCE, "date": parameters[2], "time": parameters[3], "description": parameters[4]}
+
+def process_every_n_days(parameters):
+    return {"type": EVERY_N_DAYS, "count": parameters[2], "date": parameters[3], "time": parameters[4], "description": parameters[5]}
+
+def process_nth_weekday(parameters):
+    return {"type": NTH_WEEKDAY, "count": parameters[2], "weekday": parameters[3], "time": parameters[4], "description": parameters[5]}
+
+def process_num(parameters):
+    return {"type": NUM, "date": parameters[2], "time": parameters[3], "description": parameters[4]}
+
+
 # deletes all tasks with ids in 'remove_ids'
 def delete_tasks(remove_ids):
     tasks = load_tasks()
-    tmp = list(tasks)   # dont iterate over a changing list
+    tmp = list(tasks)  # dont iterate over a changing list
     for task in tmp:
         if task.id in remove_ids:
             tasks.remove(task)
     save_tasks(tasks)
 
 
-# todo ggf. rework
 # delete all tasks of given chat
 def delete_all_tasks(chat_id):
     tasks = load_tasks()
-    tmp = list(tasks) # dont iterate over a changing list
+    tmp = list(tasks)  # dont iterate over a changing list
     for task in tmp:
         if task.chat_id == chat_id:
             tasks.remove(task)
@@ -307,36 +327,27 @@ def get_tasks_by_chat():
 
     return tasks_by_chat
 
-# todo replace
-# check if a task has to be executed
+
+# todo test
+# check if a task needs to be executed
 def check_tasks():
-    tasks = load_tasks()
+    now = dt.datetime.now()
+    appointments = load_tasks()
+    tmp = list(appointments)
 
-    print("\n[")
-    tmp = list(tasks)
-    for t in tmp:
-        print("'"+t.description+"',")
-    print("]")
+    for appointment in tmp:
+        if appointment.needs_execution():
+            execute(appointment)
+            appointment.last_execution = now  # save actual execution
+            if appointment.type == ONCE:  # execute it just once
+                appointments.remove(appointment)
 
-    for task in tmp:
-        print("Der task '"+str(task.description)+"' benötigt eine Ausführung: " + str(task.need_execution()))
-        print("'"+task.description + "' hatte ein last_execution am:"+str(task.last_execution))
-
-        if task.need_execution():
-            execute_task(task)
-
-            task.last_execution = task.get_previous_occurance() # save actual execution
-            if "s" in task.schedule.format: # execute it just once
-                print("remove at pos '"+str(tmp.index(task))+"' the '"+task.description+"'")
-                tasks.remove(task)
-
-    save_tasks(tasks)
+    save_tasks(appointments)
 
 
-# todo replace
 # executes a task
-def execute_task(task):
-    rb.remind_task(task)
+def execute(appointment):
+    bot.remind(appointment)
 
 
 # todo remove
@@ -396,10 +407,10 @@ def parse_input(args):
             hour = args[1].split(":")[0]
             minute = args[1].split(":")[1]
 
-
     return str(description), str(format), int(day), int(hour), int(minute), week_number, expand_year(year), month
 
 
+# todo cp to tasks.pkl.old and write to file
 # saves the tasks with a consistent name
 def save_tasks(tasks):
     save_object(tasks, "tasks.pkl")

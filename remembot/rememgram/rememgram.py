@@ -3,12 +3,12 @@
 #
 #
 
-from interface.config import *
-from interface.constants import *
+from remembot.common.config import *
+from remembot.common.constants import *
 
 import datetime as dt
 import calendar as cal
-import rem_bot as rb
+import remembot.bot.rem_bot as rb
 import pickle
 #import sys
 

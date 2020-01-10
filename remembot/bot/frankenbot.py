@@ -18,11 +18,13 @@ import calendar
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, InlineQueryResultArticle, InputTextMessageContent, TelegramError
 from telegram.ext import Updater, InlineQueryHandler, CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 
-import rememgram
-from interface.config import *
-from interface.constants import *
-import interface.telegramcalendar as telegramcalendar
-import interface.telegramclock as telegramclock
+import remembot.rememgram.rememgram as rememgram
+from remembot.common import config
+from remembot.common.config import *
+from remembot.common.constants import *
+import remembot.bot.telegramcalendar as telegramcalendar
+import remembot.bot.telegramclock as telegramclock
+
 
 # Enable logging
 logging.basicConfig(format='\n%(asctime)s - %(name)s - %(levelname)s - %(message)s',

@@ -4,8 +4,8 @@
 #
 
 
-import rem_bot
-import rememgram
+import remembot.bot.rem_bot
+import remembot.rememgram.rememgram
 import threading
 import time
 import os

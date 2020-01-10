@@ -4,7 +4,7 @@ todo
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-from interface.constants import *
+from remembot.common.constants import *
 
 
 def create_callback_data(action, time):

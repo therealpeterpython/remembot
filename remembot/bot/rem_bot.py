@@ -6,7 +6,7 @@ import telegram
 from telegram.ext import Updater, Filters, CommandHandler, MessageHandler
 import logging
 
-import rememgram
+from remembot.rememgram import rememgram
 
 
 # Start the bot

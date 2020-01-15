@@ -1,5 +1,6 @@
 *About Rememgram*
 This bot got developed from 2019 on by _therealpeterpython_ in (guess what) python ;-)
-Checkout out the repo or my other projects at github.com/therealpeterpython/remembot. If you have issues or feedback please contact me at github.
+Checkout out the repo and my other projects at github.com/therealpeterpython/remembot.
+If you found an issues or have feedback please contact me at github.
 
 You can use the code under the CC BY-SA 4.0 license.

@@ -121,8 +121,8 @@ def create_weekdays():
 
     keyboard.append([InlineKeyboardButton("Weekdays", callback_data=IGNORE)])
 
-    for day in WEEKDAYS_ABBR:
-        row.append(InlineKeyboardButton(day, callback_data=day))
+    for i, day in enumerate(WEEKDAYS_ABBR):
+        row.append(InlineKeyboardButton(day, callback_data=str(i)))
     keyboard.append(row)
 
     keyboard.append([InlineKeyboardButton("<  Back", callback_data=BACK)])

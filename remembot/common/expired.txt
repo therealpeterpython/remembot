@@ -1,2 +1,2 @@
 *Session expired*
-Please try again with /start or get some support with /help
+Create a new appointment with /start or get some support with /help

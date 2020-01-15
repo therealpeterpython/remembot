@@ -15,9 +15,9 @@ from remembot.common.constants import *
 def process_appointment_str(app_str):
     print("-- process_appointment_str")
     parameter = app_str.split(DELIMITER)
-    index = [i for i, p in enumerate(parameter) if p == BLOCK_START]
+    index = [i for i, p in enumerate(parameter) if p == BLOCK_START]  # get the indices of the start token
     index.append(len(parameter))
-    parameter_blocks = [parameter[index[i]: index[i+1]] for i in range(len(index)-1)]
+    parameter_blocks = [parameter[index[i]: index[i+1]] for i in range(len(index)-1)]  # split into blocks
 
     # check that each block has the right length (from this we conclude that the block is correct)
     block_length = {ONCE: 5, EVERY_N_DAYS: 6, NTH_WEEKDAY: 6, NUM: 5}

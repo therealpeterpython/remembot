@@ -11,8 +11,8 @@ from remembot.common.constants import *
 
 import datetime as dt
 import calendar as cal
-import remembot.bot.rem_bot as rb
 import remembot.bot.frankenbot as bot
+import calendar
 import pickle
 import sys
 
@@ -22,9 +22,10 @@ class Appointment:
         attrs = vars(self)
         return ', '.join("%s: %s" % item for item in attrs.items())
 
-    def __init__(self, id, chat_id, type, description, time, date=None, count=None, weekday=None):
+    def __init__(self, id, chat_id, bot, type, description, time, date=None, count=None, weekday=None):
         self.id = id
         self.chat_id = chat_id
+        self.bot = bot
         self.last_execution = dt.datetime(1, 1, 1, 0, 0)
         self.type = type
         self.date = date
@@ -40,25 +41,37 @@ class Appointment:
             return dt.datetime.combine(self.date, self.time) < now
         elif self.type == EVERY_N_DAYS:
             appointment_datetime = dt.datetime.combine(self.date, self.time)
-            # gets the last time the task should have been executed
-            last_occurrence = appointment_datetime + dt.timedelta(
-                days=(((now - appointment_datetime).days // self.count) * self.count))
+            # gets the last time the task should have been executed #
+            last_occurrence = appointment_datetime + dt.timedelta(days=(((now - appointment_datetime).days // self.count) * self.count))
             return self.last_execution < last_occurrence < now and appointment_datetime < now
         elif self.type == NTH_WEEKDAY:
-            # gets the occurrence this month
-            occurrence_current_month = get_nth_weekday(dt.datetime.combine(now.date(), self.time), self.count,
-                                                       self.weekday)
+            # gets the occurrence this month #
+            occurrence_current_month = get_nth_weekday(dt.datetime.combine(now.date(), self.time), self.count, self.weekday)
             return self.last_execution < occurrence_current_month < now
         elif self.type == NUM:
-            # get the valid day for this month
+            # get the valid day for this month #
             occ_day = get_valid_day(now.year, now.month, self.date.day)
-            # create the valid occurrence date for this month
+            # create the valid occurrence date for this month #
             occ = dt.datetime(now.year, now.month, occ_day, self.time.hour, self.time.minute)
             return self.last_execution < occ < now
 
+    # todo testen
     # returns a pretty string version of the appointment
     def pprint(self):
-        pass  # todo
+        text = ""
+        if self.type == ONCE:
+            text += "Once at {}. {} {}: \"{}\"".format(calendar.day_abbr[self.date.weekday()], self.get_date(), self.get_time(), self.description)
+        elif self.type == EVERY_N_DAYS:
+            text += "Every {} days at {}, starting with the {}. {}: \"{}\"".format(self.count, self.get_time(), calendar.day_abbr[self.date.weekday()], self.get_date(), self.description)
+        elif self.type == NTH_WEEKDAY:
+            text += "Every {}. {} at {}: \"{}\"".format(self.count, calendar.day_name[self.weekday], self.get_time(), self.description)
+        elif self.type == NUM:
+            text += "Every month at {} {}: \"{}\"".format(self.date.strftime("%d."), self.get_time(), self.description)
+        return text
+
+    def get_date(self): return self.date.strftime(DATE_FORMAT)
+
+    def get_time(self): return self.time.strftime(TIME_FORMAT)
 
 
 # Caps the day at the max or min if necessary
@@ -112,12 +125,17 @@ def expand_year(year):
 
 
 # todo testen
-def add_appointment(app_str, chat_id):
+def add_appointment(app_str, chat_id, bot):
     # get all appointments #
     appointments = load_tasks()
 
     # split the appointment blocks #
     appointment_blocks = process_appointment_str(app_str)
+    new_appointments = []
+
+    # if app_str was not valid #
+    if not appointment_blocks:
+        return []
 
     # process the blocks #
     for block in appointment_blocks:
@@ -130,26 +148,41 @@ def add_appointment(app_str, chat_id):
         elif block[1] == NUM:
             args = process_num(block)
 
-        id = hash(tuple(block + [chat_id]))
-        appointment = Appointment(id=id, **args)
-        appointments.append(appointment)
+        uid = hash(tuple(block + [chat_id, bot]))  # todo ggf. random machen
+        appointment = Appointment(id=uid, chat_id=chat_id, bot=bot, **args)
+        new_appointments.append(appointment)
+
+    appointments.extend(new_appointments)
 
     # save and check all appointments #
     save_tasks(appointments)
     check_tasks()
 
+    return new_appointments
 
+
+# todo create date and time object out of the date and time strings
 def process_once(parameters):
-    return {"type": ONCE, "date": parameters[2], "time": parameters[3], "description": parameters[4]}
+    date = dt.datetime.strptime(parameters[2], DATE_FORMAT).date()  # todo test this shit
+    time = dt.datetime.strptime(parameters[3], TIME_FORMAT).time()
+    return {"type": ONCE, "date": date, "time": time, "description": parameters[4]}
+
 
 def process_every_n_days(parameters):
-    return {"type": EVERY_N_DAYS, "count": parameters[2], "date": parameters[3], "time": parameters[4], "description": parameters[5]}
+    date = dt.datetime.strptime(parameters[3], DATE_FORMAT).date()
+    time = dt.datetime.strptime(parameters[4], TIME_FORMAT).time()
+    return {"type": EVERY_N_DAYS, "count": int(parameters[2]), "date": date, "time": time, "description": parameters[5]}
+
 
 def process_nth_weekday(parameters):
-    return {"type": NTH_WEEKDAY, "count": parameters[2], "weekday": parameters[3], "time": parameters[4], "description": parameters[5]}
+    time = dt.datetime.strptime(parameters[4], TIME_FORMAT).time()
+    return {"type": NTH_WEEKDAY, "count": int(parameters[2]), "weekday": int(parameters[3]), "time": time, "description": parameters[5]}
+
 
 def process_num(parameters):
-    return {"type": NUM, "date": parameters[2], "time": parameters[3], "description": parameters[4]}
+    date = dt.datetime.strptime(parameters[2], DATE_FORMAT).date()
+    time = dt.datetime.strptime(parameters[3], TIME_FORMAT).time()
+    return {"type": NUM, "date": date, "time": time, "description": parameters[4]}
 
 
 # deletes all tasks with ids in 'remove_ids'
@@ -223,7 +256,7 @@ def load_tasks():
 # pickles an object to filename
 def save_object(obj, filename):
     with open(filename, 'wb') as output:  # Overwrites any existing file.
-        pickle.dump(obj, output, pickle.HIGHEST_PROTOCOL)
+        pickle.dump(obj, output)
 
 
 # unpickles an object from filename

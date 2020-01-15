@@ -6,6 +6,9 @@ log.txt
 sendall.txt
 tmp_token.txt
 reports.txt
+dm
+dm.txt
+dm.py
 .idea/
 
 # Byte-compiled / optimized / DLL files

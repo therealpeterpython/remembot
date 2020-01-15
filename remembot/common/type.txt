@@ -1,0 +1,4 @@
+<b>Unique</b>:  happens just once
+<b>Day</b>:  always at the same day in each month
+<b>Weekday</b>:  every nth-occurrence of the chosen weekday
+<b>Fixed period</b>:  periodic with a fixed number of days in between

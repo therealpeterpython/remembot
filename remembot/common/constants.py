@@ -1,4 +1,10 @@
-# todo ggf. enums nutzen
+# -*- coding: utf-8 -*-
+
+# Special characters #
+BULLET = "•"
+FIRE = "🔥"
+CHECK = "✅"
+CROSS = "❌"
 
 # Clock constants #
 HOURS = 24
@@ -37,9 +43,9 @@ ORDERS = {ONCE: ORDER_ONCE, EVERY_N_DAYS: ORDER_EVERY_N_DAYS, NTH_WEEKDAY: ORDER
 
 # Parameters for the different appointment types #
 PARAMETERS_ONCE = {}
-PARAMETERS_EVERY_N_DAYS = {COUNT: {"text": "Please type in the number of days between the appointments: "},
-                           DATE: {"text": "Please select the first occurrence: "}}
+PARAMETERS_EVERY_N_DAYS = {COUNT: {"text": "<b><u>Instructions</u></b>\nPlease type in the number of days between the appointments: "},
+                           DATE: {"text": "<b><u>Instructions</u></b>\nPlease select the first occurrence: "}}
 PARAMETERS_NTH_WEEKDAY = {}  # todo
-PARAMETERS_NUM = {DATE: {"text": "Please select the first occurrence: "}}
+PARAMETERS_NUM = {DATE: {"text": "<b><u>Instructions</u></b>\nPlease select the first occurrence: "}}
 PARAMETERS = {ONCE: PARAMETERS_ONCE, EVERY_N_DAYS: PARAMETERS_EVERY_N_DAYS,
               NTH_WEEKDAY: PARAMETERS_NTH_WEEKDAY, NUM: PARAMETERS_NUM}

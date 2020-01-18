@@ -11,6 +11,7 @@ Feel free to submit issues, requests and feedback via github.
 This program is licensed under CC BY-SA 4.0 by therealpeterpython.
 """
 import logging
+from functools import reduce
 from uuid import uuid4
 import datetime
 import calendar as cal
@@ -101,7 +102,8 @@ class AppointmentCreator:
         print("- finalize")
         self.command += self.create_command()
         text = self.pprint()
-        keyboard = [[InlineKeyboardButton("Create & Switch >", switch_inline_query=self.command)]]  # todo add a "create here" button below!
+        keyboard = [[InlineKeyboardButton("Create & Switch >", switch_inline_query=self.command)],
+                    [InlineKeyboardButton("Create here", callback_data="create_here" + DELIMITER + self.command)]]  # todo "create here" button testen!
 
         self.bot.edit_message_text(text=text,
                                    chat_id=self.chat_id,
@@ -110,7 +112,6 @@ class AppointmentCreator:
         self.destroy()
 
     def pprint(self):
-        # todo vor das datum den abgekürzten Wochentag hängen
         appointment_blocks = process_appointment_str(self.command)
         text = ""
         for block in appointment_blocks:
@@ -417,6 +418,10 @@ def process_custom_keyboard_reply(update, context):
         context.bot.edit_message_text(text=text, chat_id=chat_id,
                                       message_id=message_id, parse_mode="HTML", disable_web_page_preview=True,
                                       reply_markup=InlineKeyboardMarkup(keyboard))
+    elif data.split(DELIMITER, 1)[0] == "create_here":
+        data = data.split(DELIMITER, 1)[1]
+        print("create_command")
+        print(data)
 
     else:  # we don't have an AppointmentCreator or Eraser object
         print("DELETE")
@@ -507,6 +512,7 @@ def send_expired_message(message_id, chat_id, bot):
                           parse_mode="Markdown")
 
 
+"""
 # generates temporary token to unlock admin features
 def generate_token(update, context):
     print("-- generate_token")
@@ -515,11 +521,13 @@ def generate_token(update, context):
         fp.write(str(tmp_token))
 
     print("Temporary token: ", str(tmp_token))
+"""
 
 
 # todo replace this function with (e.g.) dp.add_handler(CommandHandler('r', restart, filters=Filters.user(username='@jh0ker')))
 #  to make the sendall and getsendall methods access save. Create and load a admins.txt for this.
 # returns the token and deletes it on the disk if there is one
+"""
 def get_token():
     try:
         with open(tmp_token_path, "r+") as fp:
@@ -529,11 +537,13 @@ def get_token():
         token = None
     return token
 
+"""
+
 
 # sends the message in sendall_path if the user has teh right tmp token
 def send_all(update, context):
     print("-- send_all")
-
+    """
     token = get_token()
     if not token:
         report("Could not get the temporary token in send_all!", update)
@@ -544,20 +554,23 @@ def send_all(update, context):
     elif context.args[0] != token:
         report("Wrong token in send_all!", update)
         return
+    """
+    try:
+        with open(sendall_path, "r") as fp:
+            text = fp.read()
+        if not text:
+            raise IOError("Sendall file is empty!")
+    except:
+        update.message.reply_text(text="Nothing to send!")
+        return
 
-    with open(sendall_path, "r") as fp:
-        text = fp.read()
-    if not text:
-        raise IOError("Sendall file is empty!")
-
-    # if there is a second argument: send it just to the admin
-    if len(context.args) == 2:
-        update.message.reply_text(text=text, parse_mode="Markdown")
+    # if the argument is not 'all': send it just back to the admin
+    if not (context.args and context.args[0] == "all"):
+        update.message.reply_text(text="Just send to you:\n" + text, parse_mode="Markdown")
         return
 
     # get the chat ids and send the text to the chats
-    chat_ids = set([task.chat_id for task in rememgram.load_object("../tasks.pkl")])
-    print(chat_ids)
+    chat_ids = set([task.chat_id for task in rememgram.load_object(tasks_path)])
     num_send = 0
     for chat_id in chat_ids:
         print("TODO test this function!")
@@ -622,6 +635,14 @@ def next_occurrences():
 
 
 # shows informations about the bot. therealpeterpython and the repo
+"""
+/about@AtAdminBot:
+AtAdminBot v2.1 by @Abfelbaum
+
+This bot is published under AGPLv3<link:https://git.thevillage.chat/Abfelbaum/atadminbot/blob/master/LICENSE> on https://git.thevillage.chat/Abfelbaum/atadminbot
+
+Changelog<link>
+"""
 def about(update, context):
     with open(about_path, "r") as fp:
         text = fp.read()
@@ -634,6 +655,7 @@ def remind(appointment):
     bot.send_message(chat_id=appointment.chat_id, text=appointment.description)
 
 
+"""
 # reports illegal attempts or fails to use admin features
 def report(text, update=None):
     print("-- report")
@@ -645,6 +667,7 @@ def report(text, update=None):
     print(result)
     with open(reports_path, "a") as fp:
         fp.write(result)
+"""
 
 
 def error(update, context):
@@ -685,7 +708,7 @@ def test_handler(update, context):
 def main():
     print("-- main")
     # Delete temporary auth token #
-    get_token()
+    #get_token()
 
     # Get token #
     with open(token_path, "r") as token_file:
@@ -697,6 +720,14 @@ def main():
     # Get the dispatcher to register handlers #
     dp = updater.dispatcher
 
+    # setup the admin features #
+    with open(admins_path, "r") as fp:
+        admins = [Filters.user(user_id=int(id)) for id in fp.readlines()]
+
+    if admins:
+        admin_filter = reduce(lambda admin1, admin2: admin1 & admin2, admins)
+        dp.add_handler(CommandHandler("_sendall", send_all, filters=admin_filter))
+
     # Add the handlers #
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("add", add))
@@ -705,8 +736,7 @@ def main():
     dp.add_handler(CommandHandler("info", info))
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("about", about))
-    dp.add_handler(CommandHandler("_gentoken", generate_token))
-    dp.add_handler(CommandHandler("_sendall", send_all))
+    #dp.add_handler(CommandHandler("_gentoken", generate_token))
     dp.add_handler(CallbackQueryHandler(process_custom_keyboard_reply))
     dp.add_handler(MessageHandler(Filters.text, text_handler))
     dp.add_handler(InlineQueryHandler(inline_query_handler))

@@ -40,7 +40,7 @@ def create_clock():
                      for i in minute_blocks])
 
     # --- Last row - Back --- #
-    keyboard.append([InlineKeyboardButton("< Back", callback_data=BACK)])
+    keyboard.append([InlineKeyboardButton("<< Back", callback_data=BACK)])
 
     return InlineKeyboardMarkup(keyboard)
 

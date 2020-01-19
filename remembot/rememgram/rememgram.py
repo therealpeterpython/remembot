@@ -100,8 +100,8 @@ def subtract_one_month(t):
 
 # Return the nth occurrence of week_day
 # in the month in the year given by date
-# If there are not enough occurences of the week_day in the month
-# then the nth_week parameter gets decresed by 1
+# If there are not enough occurrences of the week_day in the month
+# then the nth_week parameter gets decreased by 1
 def get_nth_weekday(date, nth_week, week_day):
     temp = date.replace(day=1)
     diff = (week_day - temp.weekday()) % 7
@@ -161,9 +161,8 @@ def add_appointment(app_str, chat_id, bot):
     return new_appointments
 
 
-# todo create date and time object out of the date and time strings
 def process_once(parameters):
-    date = dt.datetime.strptime(parameters[2], DATE_FORMAT).date()  # todo test this shit
+    date = dt.datetime.strptime(parameters[2], DATE_FORMAT).date()  # todo test dis shit i'm out ahh
     time = dt.datetime.strptime(parameters[3], TIME_FORMAT).time()
     return {"type": ONCE, "date": date, "time": time, "description": parameters[4]}
 

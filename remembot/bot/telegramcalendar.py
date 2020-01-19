@@ -44,7 +44,7 @@ def create_calendar(year=None, month=None):
 
     # Second row - Week Days
     row = []
-    for day in ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]:
+    for day in [abbr[:1] for abbr in calendar.day_abbr]:
         row.append(InlineKeyboardButton(day, callback_data=IGNORE))
     keyboard.append(row)
 
@@ -52,7 +52,7 @@ def create_calendar(year=None, month=None):
     for week in my_calendar:
         row = []
         for day in week:
-            if (day == 0):
+            if day == 0:
                 row.append(InlineKeyboardButton(" ", callback_data=IGNORE))
             else:
                 row.append(InlineKeyboardButton(str(day), callback_data=create_callback_data("DAY", year, month, day)))
@@ -64,7 +64,7 @@ def create_calendar(year=None, month=None):
     row.append(InlineKeyboardButton(" ", callback_data=IGNORE))
     row.append(InlineKeyboardButton(">", callback_data=create_callback_data("NEXT-MONTH", year, month, day)))
     keyboard.append(row)
-    keyboard.append([InlineKeyboardButton("<  Back", callback_data=BACK)])
+    keyboard.append([InlineKeyboardButton("<<  Back", callback_data=BACK)])
 
     return InlineKeyboardMarkup(keyboard)
 
@@ -83,10 +83,7 @@ def process_calendar_selection(bot, update):
     query = update.callback_query
     (action, year, month, day) = separate_callback_data(query.data)
     curr = datetime.datetime(int(year), int(month), 1)
-    if action == IGNORE:
-        raise Exception("Unreachable IGNORE in telegramcalendar")
-        bot.answer_callback_query(callback_query_id=query.id)
-    elif action == "DAY":
+    if action == "DAY":
         ret_data = "DAY", datetime.datetime(int(year), int(month), int(day))
     elif action == "PREV-MONTH":
         pre = curr - datetime.timedelta(days=1)
@@ -100,9 +97,6 @@ def process_calendar_selection(bot, update):
                               chat_id=query.message.chat_id,
                               message_id=query.message.message_id,
                               reply_markup=create_calendar(int(ne.year), int(ne.month)))
-    elif action == "BACK":
-        raise Exception("Unreachable BACK in telegramcalendar")
-        ret_data = "BACK", None
     else:
         bot.answer_callback_query(callback_query_id=query.id, text="Something went wrong!")
         # UNKNOWN
@@ -121,27 +115,10 @@ def create_weekdays():
 
     keyboard.append([InlineKeyboardButton("Weekdays", callback_data=IGNORE)])
 
-    for i, day in enumerate(WEEKDAYS_ABBR):
+    for i, day in enumerate([abbr[:1] for abbr in calendar.day_abbr]):
         row.append(InlineKeyboardButton(day, callback_data=str(i)))
     keyboard.append(row)
 
-    keyboard.append([InlineKeyboardButton("<  Back", callback_data=BACK)])
+    keyboard.append([InlineKeyboardButton("<<  Back", callback_data=BACK)])
     return InlineKeyboardMarkup(keyboard)
-
-
-'''
-not needed
-def process_weekdays_selection(update):
-    """
-    Process the callback_query for the weekdays.
-    :param telegram.Update update: The update, as provided by the CallbackQueryHandler
-    :return: Returns the weekday if one was chosen.
-    """
-
-    data = update.callback_query.data
-    if data in WEEKDAYS_ABBR:
-        return data
-'''
-
-
 

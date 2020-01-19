@@ -35,7 +35,8 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
 # todo verschiedenen nutzer die gleizeitig mit dem bot arbeiten testen
-# todo den ausgewählten type mit anzeigen in den vrschiedenen stages
+# todo im kalender einen Actual month button in der Mitte hinzufügen
+# todo markdown to html
 
 class AppointmentCreator:
     """
@@ -123,8 +124,8 @@ class AppointmentCreator:
         print("- finalize")
         self.command += self.create_command()
         text = self.pprint()
-        keyboard = [[InlineKeyboardButton("Create in another chat >", switch_inline_query=self.command)],
-                    [InlineKeyboardButton("Create here", callback_data="create_here" + DELIMITER + self.command)]]  # todo "create here" button testen!
+        keyboard = [[InlineKeyboardButton("Create in another chat >>", switch_inline_query=self.command)],
+                    [InlineKeyboardButton("Create here", switch_inline_query_current_chat=self.command)]]
 
         self.bot.edit_message_text(text=text,
                                    chat_id=self.chat_id,
@@ -138,6 +139,7 @@ class AppointmentCreator:
 
         :return: Pretty string which can be printed without regrets.
         """
+        print("- pprint")
         appointment_blocks = parse_appointment_str(self.command)
         text = ""
         for block in appointment_blocks:
@@ -146,11 +148,11 @@ class AppointmentCreator:
                 text += "{} Once at {}. {} {}: \"{}\"\n".format(BULLET, day_name, block[2], block[3], block[4])
             elif block[1] == EVERY_N_DAYS:
                 day_name = cal.day_abbr[datetime.datetime.strptime(block[3], DATE_FORMAT).weekday()]
-                text += "{} Every {} days at {}, starting on the {}. {}: {}\n".format(BULLET, block[2], block[4], day_name, block[3], block[5])
+                text += "{} Every {} days at {}, starting on the {}. {}: \"{}\"\n".format(BULLET, block[2], block[4], day_name, block[3], block[5])
             elif block[1] == NTH_WEEKDAY:
-                text += "{} Every {}. {} at {}: {}\n".format(BULLET, block[2], cal.day_name[int(block[3])], block[4], block[5])
+                text += "{} Every {}. {} at {}: \"{}\"\n".format(BULLET, block[2], cal.day_name[int(block[3])], block[4], block[5])
             elif block[1] == NUM:
-                text += "{} Every month at {} {}: {}\n".format(BULLET, block[2], block[3], block[4])
+                text += "{} Every month at {} {}: \"{}\"\n".format(BULLET, block[2], block[3], block[4])
             else:
                 raise ValueError("'{}' is not a valid type!".format(block[1]))
         return text
@@ -219,7 +221,7 @@ def start(update, context):
     AppointmentCreator(chat_id=update.message.chat.id, message_id=message.message_id, bot=context.bot)
 
 
-def appointment_type(update, context, text="<b><u>Instructions</u></b>\nPlease select a type: "):
+def appointment_type(update, context, text="Please select a type: "):
     """
     Stage of the appointment type. Shows an inline keyboard for the
     user to choose one of the possible types. The keyboard result
@@ -231,14 +233,19 @@ def appointment_type(update, context, text="<b><u>Instructions</u></b>\nPlease s
     :return: The send message
     """
     print("-- appointment_type")
+    # create the instruction header #
+    instruction = "<b><u>Instructions</u></b>\n"
+
     # add the introduction text #
     with open(type_path, "r") as fp:
         introduction = fp.read()
-        text = introduction + text
+        text = introduction + instruction + text
 
     # create keyboard markup #
-    keyboard = [[InlineKeyboardButton("Unique", callback_data=ONCE), InlineKeyboardButton("Fixed period", callback_data=EVERY_N_DAYS)],
-                [InlineKeyboardButton("Weekday", callback_data=NTH_WEEKDAY), InlineKeyboardButton("Day", callback_data=NUM)]]
+    keyboard = [[InlineKeyboardButton(APPOINTMENT_NAMES[ONCE], callback_data=ONCE),
+                 InlineKeyboardButton(APPOINTMENT_NAMES[EVERY_N_DAYS], callback_data=EVERY_N_DAYS)],
+                [InlineKeyboardButton(APPOINTMENT_NAMES[NTH_WEEKDAY], callback_data=NTH_WEEKDAY),
+                 InlineKeyboardButton(APPOINTMENT_NAMES[NUM], callback_data=NUM)]]
     markup = InlineKeyboardMarkup(keyboard)
 
     # write message #
@@ -251,7 +258,7 @@ def appointment_type(update, context, text="<b><u>Instructions</u></b>\nPlease s
     return msg
 
 
-def calendar(update, context, text="<b><u>Instructions</u></b>\nPlease select a date: "):
+def calendar(update, context, text="Please select a date: "):
     """
     Stage of the date. Shows an inline keyboard calendar for the user
     to choose a date from. The keyboard result gets caught by
@@ -267,17 +274,22 @@ def calendar(update, context, text="<b><u>Instructions</u></b>\nPlease select a 
         chat_id = update.message.chat.id
     else:  # inlinekeyboard
         chat_id = update.callback_query.message.chat_id
+
     ac = AppointmentCreator.getinstance(chat_id)  # there is not necessary a callback_queue to get the right message id from
     if ac:  # there should(!) be no case where there are no ac when this method is called
-        context.bot.edit_message_text(text=text,
+        # create the instruction header #
+        instruction = "<b><u>Instructions - {} ({}/{})</u></b>\n".format(APPOINTMENT_NAMES[ac.type],
+                                                                         ORDERS[ac.type].index(ac.stage),
+                                                                         len(ORDERS[ac.type])-2)
+
+        context.bot.edit_message_text(text=instruction + text,
                                       chat_id=ac.chat_id,
                                       message_id=ac.message_id,
                                       reply_markup=telegramcalendar.create_calendar(),
                                       parse_mode="HTML")
 
 
-# todo replace all queries in this methods like in calendar with ac objects
-def clock(update, context, text="<b><u>Instructions</u></b>\nPlease select a time: "):
+def clock(update, context, text="Please select a time: "):
     """
     Stage of the time. Shows an inline keyboard with hours and
     minutes for the user to choose a time from. The keyboard result
@@ -289,15 +301,25 @@ def clock(update, context, text="<b><u>Instructions</u></b>\nPlease select a tim
     :return: None
     """
     print("-- clock")
-    query = update.callback_query
-    context.bot.edit_message_text(text=text,
-                                  chat_id=query.message.chat_id,
-                                  message_id=query.message.message_id,
-                                  reply_markup=telegramclock.create_clock(),
-                                  parse_mode="HTML")
+    if update.message:  # text message
+        chat_id = update.message.chat.id
+    else:  # inlinekeyboard
+        chat_id = update.callback_query.message.chat_id
+
+    ac = AppointmentCreator.getinstance(chat_id)  # there is not necessary a callback_queue to get the right message id from
+    if ac:  # there should(!) be no case where there are no ac when this method is called
+        # create the instruction header #
+        instruction = "<b><u>Instructions - {} ({}/{})</u></b>\n".format(APPOINTMENT_NAMES[ac.type],
+                                                                         ORDERS[ac.type].index(ac.stage),
+                                                                         len(ORDERS[ac.type]) - 2)
+        context.bot.edit_message_text(text=instruction + text,
+                                      chat_id=ac.chat_id,
+                                      message_id=ac.message_id,
+                                      reply_markup=telegramclock.create_clock(),
+                                      parse_mode="HTML")
 
 
-def weekday(update, context, text="<b><u>Instructions</u></b>\nPlease select the weekday: "):
+def weekday(update, context, text="Please select the weekday: "):
     """
     Stage of the weekday. Shows an inline keyboard with the weekdays
     for the user to choose one from. The keyboard result gets caught
@@ -316,7 +338,11 @@ def weekday(update, context, text="<b><u>Instructions</u></b>\nPlease select the
 
     ac = AppointmentCreator.getinstance(chat_id)  # there is no callback_queue to get the right message id from
     if ac:  # there should(!) be no case where there are no ac when this method is called
-        context.bot.edit_message_text(text=text,
+        # create the instruction header #
+        instruction = "<b><u>Instructions - {} ({}/{})</u></b>\n".format(APPOINTMENT_NAMES[ac.type],
+                                                                         ORDERS[ac.type].index(ac.stage),
+                                                                         len(ORDERS[ac.type]) - 2)
+        context.bot.edit_message_text(text=instruction + text,
                                       chat_id=ac.chat_id,
                                       message_id=ac.message_id,
                                       reply_markup=telegramcalendar.create_weekdays(),
@@ -342,6 +368,7 @@ def next(update, context, text="Data saved. Create another appointment?"):
         chat_id = update.message.chat.id
     else:  # inlinekeyboard
         chat_id = update.callback_query.message.chat_id
+
     ac = AppointmentCreator.getinstance(chat_id)  # there is no callback_queue to get the right message id from
     if ac:  # there should(!) be no case where there are no ac when this method is called
         context.bot.edit_message_text(text=text,
@@ -350,7 +377,7 @@ def next(update, context, text="Data saved. Create another appointment?"):
                                       reply_markup=InlineKeyboardMarkup(keyboard))
 
 
-def count(update, context, text="<b><u>Instructions</u></b>\nPlease type in the number of days: "):
+def count(update, context, text="Please type in the number of days: "):
     """
     Stage of the number. Sends a text message to the user that he
     needs to type in a number. This can be any needed number and can
@@ -363,14 +390,25 @@ def count(update, context, text="<b><u>Instructions</u></b>\nPlease type in the 
     :return: None
     """
     print("-- count")
-    query = update.callback_query
-    context.bot.edit_message_text(text=text,
-                                  chat_id=query.message.chat_id,
-                                  message_id=query.message.message_id,
-                                  parse_mode="HTML")
+    if update.message:  # text message
+        chat_id = update.message.chat.id
+    else:  # inlinekeyboard
+        chat_id = update.callback_query.message.chat_id
+    ac = AppointmentCreator.getinstance(chat_id)  # there is not necessary a callback_queue to get the right message id from
+
+    if ac:  # there should(!) be no case where there are no ac when this method is called
+        # create the instruction header #
+        instruction = "<b><u>Instructions - {} ({}/{})</u></b>\n".format(APPOINTMENT_NAMES[ac.type],
+                                                                         ORDERS[ac.type].index(ac.stage),
+                                                                         len(ORDERS[ac.type]) - 2)
+
+        context.bot.edit_message_text(text=instruction + text,
+                                      chat_id=ac.chat_id,
+                                      message_id=ac.message_id,
+                                      parse_mode="HTML")
 
 
-def description(update, context, text="<b><u>Instructions</u></b>\nPlease type in your description: "):
+def description(update, context, text="Please type in your description: "):
     """
     Stage of the appointment description. Sends a text message to the
     user that he needs to type in a description. The user response
@@ -382,16 +420,26 @@ def description(update, context, text="<b><u>Instructions</u></b>\nPlease type i
     :return: None
     """
     print("-- description")
-    query = update.callback_query
-    context.bot.edit_message_text(text=text,
-                                  chat_id=query.message.chat_id,
-                                  message_id=query.message.message_id,
-                                  parse_mode="HTML")
+    if update.message:  # text message
+        chat_id = update.message.chat.id
+    else:  # inlinekeyboard
+        chat_id = update.callback_query.message.chat_id
+    ac = AppointmentCreator.getinstance(chat_id)  # there is not necessary a callback_queue to get the right message id from
+
+    if ac:  # there should(!) be no case where there are no ac when this method is called
+        # create the instruction header #
+        instruction = "<b><u>Instructions - {} ({}/{})</u></b>\n".format(APPOINTMENT_NAMES[ac.type],
+                                                                         ORDERS[ac.type].index(ac.stage),
+                                                                         len(ORDERS[ac.type]) - 2)
+        context.bot.edit_message_text(text=instruction + text,
+                                      chat_id=ac.chat_id,
+                                      message_id=ac.message_id,
+                                      parse_mode="HTML")
 
 
 def text_handler(update, context):
     """
-    Catches all text messages. If there are an AppointmentCreator
+    Catches all text messages. If there is an AppointmentCreator
     object in the right stage the message is interpreted as the
     wanted input. After this the AppointmentCreator is set to the
     next stage and the function of the next stage is called.
@@ -544,11 +592,6 @@ def process_custom_keyboard_reply(update, context):
                                       message_id=message_id, parse_mode="HTML", disable_web_page_preview=True,
                                       reply_markup=InlineKeyboardMarkup(keyboard))
 
-    elif data.split(DELIMITER, 1)[0] == "create_here":
-        data = data.split(DELIMITER, 1)[1]
-        print("create_command")
-        print(data)
-
     else:  # we don't have an AppointmentCreator or Eraser object
         send_expired_message(message_id, chat_id, context.bot)
 
@@ -599,7 +642,7 @@ def add(update, context):
 
     # reply to user #
     if new_appointments:
-        text = "<b>I have added the following appointments:</b>\n"  # todo diese kleinen strings in eine gemeineinsame text datei
+        text = "<b>I have added the following appointments:</b>\n"  # todo diese kleinen strings ggf. in eine gemeineinsame text datei
         text += '\n'.join(["<b>{}</b> {}".format(BULLET, appointment.pprint()) for appointment in new_appointments])
         update.message.reply_text(text=text, parse_mode="HTML")
     else:

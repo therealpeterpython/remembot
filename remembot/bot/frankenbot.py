@@ -22,7 +22,7 @@ from telegram.ext import Updater, InlineQueryHandler, CommandHandler, CallbackQu
 from remembot.rememgram import rememgram
 from remembot.common.config import *
 from remembot.common.constants import *
-from remembot.common.helper import process_appointment_str
+from remembot.common.helper import parse_appointment_str
 from remembot.bot import telegramcalendar
 from remembot.bot import telegramclock
 
@@ -38,6 +38,12 @@ logger.addHandler(logging.StreamHandler())
 # todo den ausgewählten type mit anzeigen in den vrschiedenen stages
 
 class AppointmentCreator:
+    """
+    Stores the necessary information while the user creates
+    appointments. Only one AppointmentCreator object per chat. The
+    objects were saved at creation time in the _instances dict with
+    their respective chat id as key.
+    """
     _instances = dict()
 
     def __str__(self):
@@ -62,11 +68,19 @@ class AppointmentCreator:
         self._instances[chat_id] = self
 
     def create_command(self):
-        """The 4 different styles for appointment strings (;; = DELIMITER):
+        """
+        Creates command string which can be used in a
+        switch_inline_query button. The command can be parsed with
+        the parse_appointment_str function in helper. The specific
+        order and the information in the string depends on the type
+        of the appointment.
+        The 4 different styles for appointment strings, if  DELIMITER = ;; and BLOCK_START = A, are:
         A;;ONCE;;13.09.2019;;14:45;;My text
         A;;EVERY_N_DAYS;;14;;13.09.2019;;14:45;;My text
         A;;NTH_WEEKDAY;;2;;MONDAY;;14:45;;My text
         A;;NUM;;13.09.2019;;14:45;;My text
+
+        :return: Command string with all of the information about all created appointments.
         """
         print("- create_command")
 
@@ -83,8 +97,8 @@ class AppointmentCreator:
 
         return command
 
-    def next_command(self):
-        print("- next_command")
+    def new_appointment(self):
+        print("- new_appointment")
         self.command += self.create_command() + DELIMITER
         self.reset()
 
@@ -99,10 +113,17 @@ class AppointmentCreator:
         self.description = None
 
     def finalize(self):
+        """
+        Creates the final command string and an inline keyboard
+        markup with buttons to create the appointments in another
+        chat or in this chat. After this, the object destroys itself.
+
+        :return: None
+        """
         print("- finalize")
         self.command += self.create_command()
         text = self.pprint()
-        keyboard = [[InlineKeyboardButton("Create & Switch >", switch_inline_query=self.command)],
+        keyboard = [[InlineKeyboardButton("Create in another chat >", switch_inline_query=self.command)],
                     [InlineKeyboardButton("Create here", callback_data="create_here" + DELIMITER + self.command)]]  # todo "create here" button testen!
 
         self.bot.edit_message_text(text=text,
@@ -112,7 +133,12 @@ class AppointmentCreator:
         self.destroy()
 
     def pprint(self):
-        appointment_blocks = process_appointment_str(self.command)
+        """
+        Create a pretty print string of the stored appointments.
+
+        :return: Pretty string which can be printed without regrets.
+        """
+        appointment_blocks = parse_appointment_str(self.command)
         text = ""
         for block in appointment_blocks:
             if block[1] == ONCE:
@@ -129,7 +155,6 @@ class AppointmentCreator:
                 raise ValueError("'{}' is not a valid type!".format(block[1]))
         return text
 
-
     def destroy(self):
         print("- destroy")
         del self.__class__._instances[self.chat_id]
@@ -141,6 +166,12 @@ class AppointmentCreator:
 
 
 class Eraser:
+    """
+    Stores the necessary information while the user deletes
+    appointments. Only one Eraser object per chat. The objects were
+    saved at creation time in the _instances dict with their
+    respective chat id as key.
+    """
     _instances = dict()
 
     def __str__(self):
@@ -162,10 +193,17 @@ class Eraser:
         return d[chat_id] if chat_id in d else None
 
 
-# Define a few command handlers. These usually take the two arguments update and
-# context. Error handlers also receive the raised TelegramError object in error.
 def start(update, context):
-    """Send a message when the command /start is issued."""
+    """
+    Start command handler. Calls the appointment_type function and
+    creates a new AppointmentCreator object with the right message id.
+    If there is already an ApointmentCreator for the given chat id,
+    the old object will be destroyed and an expired message gets send.
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :return: None
+    """
     print("-- start")
     if update.message:  # text message
         chat_id = update.message.chat.id
@@ -177,12 +215,21 @@ def start(update, context):
         send_expired_message(ac.message_id, ac.chat_id, context.bot)
         ac.destroy()
 
-    #context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
     message = appointment_type(update, context)
     AppointmentCreator(chat_id=update.message.chat.id, message_id=message.message_id, bot=context.bot)
 
 
 def appointment_type(update, context, text="<b><u>Instructions</u></b>\nPlease select a type: "):
+    """
+    Stage of the appointment type. Shows an inline keyboard for the
+    user to choose one of the possible types. The keyboard result
+    gets caught by the process_custom_keyboard_reply function.
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :param text: The message text which is shown to the user
+    :return: The send message
+    """
     print("-- appointment_type")
     # add the introduction text #
     with open(type_path, "r") as fp:
@@ -205,6 +252,16 @@ def appointment_type(update, context, text="<b><u>Instructions</u></b>\nPlease s
 
 
 def calendar(update, context, text="<b><u>Instructions</u></b>\nPlease select a date: "):
+    """
+    Stage of the date. Shows an inline keyboard calendar for the user
+    to choose a date from. The keyboard result gets caught by
+    the process_custom_keyboard_reply function.
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :param text: The message text which is shown to the user
+    :return: None
+    """
     print("-- calendar")
     if update.message:  # text message
         chat_id = update.message.chat.id
@@ -221,6 +278,16 @@ def calendar(update, context, text="<b><u>Instructions</u></b>\nPlease select a 
 
 # todo replace all queries in this methods like in calendar with ac objects
 def clock(update, context, text="<b><u>Instructions</u></b>\nPlease select a time: "):
+    """
+    Stage of the time. Shows an inline keyboard with hours and
+    minutes for the user to choose a time from. The keyboard result
+    gets caught by the process_custom_keyboard_reply function.
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :param text: The message text which is shown to the user
+    :return: None
+    """
     print("-- clock")
     query = update.callback_query
     context.bot.edit_message_text(text=text,
@@ -230,16 +297,17 @@ def clock(update, context, text="<b><u>Instructions</u></b>\nPlease select a tim
                                   parse_mode="HTML")
 
 
-def count(update, context, text="<b><u>Instructions</u></b>\nPlease type in the number of days: "):
-    print("-- count")
-    query = update.callback_query
-    context.bot.edit_message_text(text=text,
-                                  chat_id=query.message.chat_id,
-                                  message_id=query.message.message_id,
-                                  parse_mode="HTML")
-
-
 def weekday(update, context, text="<b><u>Instructions</u></b>\nPlease select the weekday: "):
+    """
+    Stage of the weekday. Shows an inline keyboard with the weekdays
+    for the user to choose one from. The keyboard result gets caught
+    by the process_custom_keyboard_reply function.
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :param text: The message text which is shown to the user
+    :return: None
+    """
     print("-- weekday")
     if update.message:  # text message
         chat_id = update.message.chat.id
@@ -255,7 +323,64 @@ def weekday(update, context, text="<b><u>Instructions</u></b>\nPlease select the
                                       parse_mode="HTML")
 
 
+def next(update, context, text="Data saved. Create another appointment?"):
+    """
+    Stage of the next appointment. Shows an inline keyboard with
+    'Yes' and 'No'. The user can decide if he want to create another
+    appointment. The keyboard result gets caught by the
+    process_custom_keyboard_reply function.
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :param text: The message text which is shown to the user
+    :return: None
+    """
+    print("-- next")
+    keyboard = [[InlineKeyboardButton("Yes", callback_data=YES),
+                 InlineKeyboardButton("No", callback_data=NO)]]
+    if update.message:  # text message
+        chat_id = update.message.chat.id
+    else:  # inlinekeyboard
+        chat_id = update.callback_query.message.chat_id
+    ac = AppointmentCreator.getinstance(chat_id)  # there is no callback_queue to get the right message id from
+    if ac:  # there should(!) be no case where there are no ac when this method is called
+        context.bot.edit_message_text(text=text,
+                                      chat_id=ac.chat_id,
+                                      message_id=ac.message_id,
+                                      reply_markup=InlineKeyboardMarkup(keyboard))
+
+
+def count(update, context, text="<b><u>Instructions</u></b>\nPlease type in the number of days: "):
+    """
+    Stage of the number. Sends a text message to the user that he
+    needs to type in a number. This can be any needed number and can
+    be specified with the text parameter. The user response gets
+    caught by the text_handler function.
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :param text: The message text which is shown to the user
+    :return: None
+    """
+    print("-- count")
+    query = update.callback_query
+    context.bot.edit_message_text(text=text,
+                                  chat_id=query.message.chat_id,
+                                  message_id=query.message.message_id,
+                                  parse_mode="HTML")
+
+
 def description(update, context, text="<b><u>Instructions</u></b>\nPlease type in your description: "):
+    """
+    Stage of the appointment description. Sends a text message to the
+    user that he needs to type in a description. The user response
+    gets caught by the text_handler function.
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :param text: The message text which is shown to the user
+    :return: None
+    """
     print("-- description")
     query = update.callback_query
     context.bot.edit_message_text(text=text,
@@ -265,6 +390,16 @@ def description(update, context, text="<b><u>Instructions</u></b>\nPlease type i
 
 
 def text_handler(update, context):
+    """
+    Catches all text messages. If there are an AppointmentCreator
+    object in the right stage the message is interpreted as the
+    wanted input. After this the AppointmentCreator is set to the
+    next stage and the function of the next stage is called.
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :return: None
+    """
     print("-- text_handler")
     if update.message:  # text message
         chat_id = update.message.chat.id
@@ -283,30 +418,20 @@ def text_handler(update, context):
         STAGE_FUNCTIONS[ac.stage](update, context, **get_parameters(ac.type, ac.stage))  # call the stage function
 
 
-def next_appointment(update, context):
-    print("-- next_appointment")
-    keyboard = [[InlineKeyboardButton("Yes", callback_data=YES),
-                 InlineKeyboardButton("No", callback_data=NO)]]
-    if update.message:  # text message
-        chat_id = update.message.chat.id
-    else:  # inlinekeyboard
-        chat_id = update.callback_query.message.chat_id
-    ac = AppointmentCreator.getinstance(chat_id)  # there is no callback_queue to get the right message id from
-    if ac:  # there should(!) be no case where there are no ac when this method is called
-        context.bot.edit_message_text(text="Data saved. Create another appointment?",
-                                      chat_id=ac.chat_id,
-                                      message_id=ac.message_id,
-                                      reply_markup=InlineKeyboardMarkup(keyboard))
-
-
 # todo methode ist ziemlich lang. ggf nochmal in 2-3 kleienre methoden aufteilen
+# todo namen der methode aendern
 def process_custom_keyboard_reply(update, context):
     """
-    Processes the replys of the custom keyboards. Switches,
-    depending on the received data, to the next keyboard.
+    Catches all replies of inline keyboards. If there is an
+    AppointmentCreator or Eraser object with the right chat and
+    message id the keyboard data is interpreted as the wanted input.
+    If there was a matching AppointmentCreator object, the object is
+    set to the next stage and the function of the next stage is
+    called. If there isn't such an object, the inline keyboard gets
+    replaced with an expired message.
 
-    :param update: Standard telegram update
-    :param context: Standard telegram context
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
     :return: None
     """
     print("-- process_custom_keyboard_reply")
@@ -354,7 +479,7 @@ def process_custom_keyboard_reply(update, context):
                 return  # can't move on to the next stage
         elif ac.stage == NEXT:
             if data == YES:
-                ac.next_command()
+                ac.new_appointment()
                 appointment_type(update, context)
             elif data == NO:
                 ac.finalize()
@@ -418,26 +543,27 @@ def process_custom_keyboard_reply(update, context):
         context.bot.edit_message_text(text=text, chat_id=chat_id,
                                       message_id=message_id, parse_mode="HTML", disable_web_page_preview=True,
                                       reply_markup=InlineKeyboardMarkup(keyboard))
+
     elif data.split(DELIMITER, 1)[0] == "create_here":
         data = data.split(DELIMITER, 1)[1]
         print("create_command")
         print(data)
 
     else:  # we don't have an AppointmentCreator or Eraser object
-        print("DELETE")
         send_expired_message(message_id, chat_id, context.bot)
 
 
 def inline_query_handler(update, context):
     """
     The InlineQueryHandler for the bot. It shows the switch_pm button
-    and the create appointment buttons for the prepared appointments.
+    and the create appointment button for the prepared appointments.
 
-    :param update: the telegram.Update object
-    :param context: the telegram.ext.CallbackContext object
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :return: None
     """
     print("-- inline_query_handler")
-    appointment_blocks = process_appointment_str(update.inline_query.query)
+    appointment_blocks = parse_appointment_str(update.inline_query.query)
     r = [InlineQueryResultArticle(id=uuid4(),
                                   title="None",
                                   input_message_content=InputTextMessageContent("/add@{} {}".format(context.bot.username, update.inline_query.query)))]
@@ -452,6 +578,15 @@ def inline_query_handler(update, context):
 
 
 def add(update, context):
+    """
+    Add command handler. Checks if the given argument is valid and if
+    so adds the appointments. If no argument was given, calls the
+    start function.
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :return: None
+    """
     print("-- add")
     if not context.args:
         start(update, context)
@@ -473,7 +608,13 @@ def add(update, context):
 
 
 def help(update, context):
-    """Send a message when the command /help is issued."""
+    """
+    Loads the help text and send it back to the user.
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :return: None
+    """
     print("-- help")
     with open(help_path, "r") as fp:
         text = fp.read()
@@ -481,6 +622,14 @@ def help(update, context):
 
 
 def cancel(update, context):
+    """
+    Cancel command handler. Cancels appointment creations and
+    deletions.
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :return: None
+    """
     print("-- cancel")
     if update.message:  # text message
         chat_id = update.message.chat.id
@@ -498,11 +647,21 @@ def cancel(update, context):
     if eraser:
         context.bot.edit_message_text(text="Creation canceled!", chat_id=eraser.chat_id, message_id=eraser.message_id)
         text = "Canceled deletion - create a new appointment with /start or get help with /help"
+        eraser.destroy()
 
     context.bot.send_message(chat_id=chat_id, text=text)
 
 
 def send_expired_message(message_id, chat_id, bot):
+    """
+    Edit the given message to the expired text. This is useful for
+    old inline keyboards.
+
+    :param message_id: Message id of the expired message
+    :param chat_id: Chat id of the affected chat
+    :param bot: Bot which send the old message
+    :return: None
+    """
     print("-- send_expired_message")
     with open(expired_path, "r") as fp:
         text = fp.read()
@@ -512,49 +671,19 @@ def send_expired_message(message_id, chat_id, bot):
                           parse_mode="Markdown")
 
 
-"""
-# generates temporary token to unlock admin features
-def generate_token(update, context):
-    print("-- generate_token")
-    tmp_token = uuid4()
-    with open(tmp_token_path, "w") as fp:
-        fp.write(str(tmp_token))
-
-    print("Temporary token: ", str(tmp_token))
-"""
-
-
-# todo replace this function with (e.g.) dp.add_handler(CommandHandler('r', restart, filters=Filters.user(username='@jh0ker')))
-#  to make the sendall and getsendall methods access save. Create and load a admins.txt for this.
-# returns the token and deletes it on the disk if there is one
-"""
-def get_token():
-    try:
-        with open(tmp_token_path, "r+") as fp:
-            token = fp.read()
-            fp.truncate(0)
-    except IOError:
-        token = None
-    return token
-
-"""
-
-
-# sends the message in sendall_path if the user has teh right tmp token
 def send_all(update, context):
+    """
+    _sendall command handler. This is an admin only feature. Loads
+    the sendall message and sends them to the admin who requested
+    this. If the argument is 'all' the message is send to ALL chats
+    with active appointments.
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :return: None
+    """
     print("-- send_all")
-    """
-    token = get_token()
-    if not token:
-        report("Could not get the temporary token in send_all!", update)
-        return
-    elif len(context.args) not in [1, 2]:
-        report("Wrong number of arguments in send_all!", update)
-        return
-    elif context.args[0] != token:
-        report("Wrong token in send_all!", update)
-        return
-    """
+
     try:
         with open(sendall_path, "r") as fp:
             text = fp.read()
@@ -583,6 +712,15 @@ def send_all(update, context):
 
 
 def delete(update, context):
+    """
+    Delete command handler. Shows the initial delete options in an
+    inline keyboard. If there is already an Eraser object for this
+    chat: the old object gets deleted and an expired message is send.
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :return: None
+    """
     print("-- delete")
     chat_id = update.message.chat.id
     message_id = update.message.message_id
@@ -617,8 +755,15 @@ def delete(update, context):
     Eraser(chat_id, message.message_id)
 
 
-# shows the appointments as text list
 def info(update, context):
+    """
+    Info command handler. Sends the appointments as readable list
+    back.
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :return: None
+    """
     print("-- info")
     chat_id = update.message.chat_id
     abc = rememgram.get_tasks_by_chat()
@@ -636,6 +781,7 @@ def next_occurrences():
 
 # shows informations about the bot. therealpeterpython and the repo
 """
+todo ggf überarbeiten
 /about@AtAdminBot:
 AtAdminBot v2.1 by @Abfelbaum
 
@@ -644,6 +790,15 @@ This bot is published under AGPLv3<link:https://git.thevillage.chat/Abfelbaum/at
 Changelog<link>
 """
 def about(update, context):
+    """
+    About command handler. Loads the about text file and sends it
+    back. The file contains informations about the bot and the
+    repository.
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :return: None
+    """
     with open(about_path, "r") as fp:
         text = fp.read()
     context.bot.send_message(chat_id=update.message.chat.id, text=text, parse_mode="Markdown", disable_web_page_preview=True)
@@ -651,35 +806,36 @@ def about(update, context):
 
 # Remind the right chat of the appointment
 def remind(appointment):
+    """
+    Takes an Appointment object and sends its description to its chat
+    id.
+
+    :param appointment: Appointment object from the rememgram package
+    :return: None
+    """
     bot = appointment.bot
     bot.send_message(chat_id=appointment.chat_id, text=appointment.description)
 
 
-"""
-# reports illegal attempts or fails to use admin features
-def report(text, update=None):
-    print("-- report")
-    if update:
-        text += " -> Update: " + str(update)
-
-    now = datetime.datetime.now()
-    result = "{}: {}".format(now, text)
-    print(result)
-    with open(reports_path, "a") as fp:
-        fp.write(result)
-"""
-
-
 def error(update, context):
-    """Log Errors caused by Updates."""
+    """
+    Log errors
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :return: None
+    """
     print("-- error")
     logger.warning('Error "%s" caused by update "%s"', context.error, update, exc_info=1)
 
 
 def sanitize_text(text):
     """
-    DELIMITER is used as delimiter for the final inline command and BLOCK_START is used to split the appointment block
-    so they may not appear in the appointment description.
+    Sanitizes the given text. DELIMITER may not appear anywhere in
+    the text and the text may not consists only of BLOCK_START. To
+    prevent this, all appearances of DELIMITER get replaced by
+    SEPARATOR and text = BLOCK_START gets changed to
+    text = BLOCK_START + " ".
 
     :param text: String to sanitize
     :return: Sanitized string unequal BLOCK_START and without DELIMITER
@@ -702,10 +858,14 @@ def previous_stage(type, stage): return ORDERS[type][ORDERS[type].index(stage) -
 
 def get_parameters(type, stage): return PARAMETERS[type].get(stage, {})
 
-def test_handler(update, context):
-    print("-- test_handler")
 
 def main():
+    """
+    Main function. Creates the updater and all the handlers. Starts
+    also the bot.
+
+    :return: None
+    """
     print("-- main")
     # Delete temporary auth token #
     #get_token()
@@ -736,7 +896,6 @@ def main():
     dp.add_handler(CommandHandler("info", info))
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("about", about))
-    #dp.add_handler(CommandHandler("_gentoken", generate_token))
     dp.add_handler(CallbackQueryHandler(process_custom_keyboard_reply))
     dp.add_handler(MessageHandler(Filters.text, text_handler))
     dp.add_handler(InlineQueryHandler(inline_query_handler))
@@ -754,7 +913,7 @@ def main():
 if __name__ == '__main__':
     # Mapping of the stages to their functions #
     STAGE_FUNCTIONS = {TYPE: appointment_type, DATE: calendar, TIME: clock, COUNT: count, WEEKDAY: weekday,
-                       DESCRIPTION: description, NEXT: next_appointment}  # :'<
+                       DESCRIPTION: description, NEXT: next}
     # if i made a mistake and don't have STAGE_FUNCTIONS and the stages synced
     if len(STAGE_FUNCTIONS) != NUM_STAGES:
         raise Exception("Wrong number of stages or functions!")

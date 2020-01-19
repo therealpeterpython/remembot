@@ -12,7 +12,7 @@ MINUTES = 60
 
 # Callback data constants #
 SEPARATOR = ";"  # separates callback data
-WEEKDAYS_ABBR = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+#WEEKDAYS_ABBR = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
 IGNORE = "IGNORE"
 BACK = "BACK"
 NO = "0"
@@ -28,6 +28,7 @@ TIME_FORMAT = "%H:%M"
 
 # Appointment types #
 ONCE, EVERY_N_DAYS, NTH_WEEKDAY, NUM = [str(i) for i in range(4)]   # str (not int) for the inline buttons
+APPOINTMENT_NAMES = {ONCE: "Unique", EVERY_N_DAYS: "Fixed period", NTH_WEEKDAY: "Weekday", NUM: "Day"}
 
 # Stages #
 NUM_STAGES = 7
@@ -43,9 +44,9 @@ ORDERS = {ONCE: ORDER_ONCE, EVERY_N_DAYS: ORDER_EVERY_N_DAYS, NTH_WEEKDAY: ORDER
 
 # Parameters for the different appointment types #
 PARAMETERS_ONCE = {}
-PARAMETERS_EVERY_N_DAYS = {COUNT: {"text": "<b><u>Instructions</u></b>\nPlease type in the number of days between the appointments: "},
-                           DATE: {"text": "<b><u>Instructions</u></b>\nPlease select the first occurrence: "}}
-PARAMETERS_NTH_WEEKDAY = {}  # todo
-PARAMETERS_NUM = {DATE: {"text": "<b><u>Instructions</u></b>\nPlease select the first occurrence: "}}
+PARAMETERS_EVERY_N_DAYS = {COUNT: {"text": "Please type in the number of days between the appointments: "},
+                           DATE: {"text": "Please select the first occurrence: "}}
+PARAMETERS_NTH_WEEKDAY = {COUNT: {"text": "Please type in the number of the occurrence: "}}
+PARAMETERS_NUM = {DATE: {"text": "Please select the first occurrence: "}}
 PARAMETERS = {ONCE: PARAMETERS_ONCE, EVERY_N_DAYS: PARAMETERS_EVERY_N_DAYS,
               NTH_WEEKDAY: PARAMETERS_NTH_WEEKDAY, NUM: PARAMETERS_NUM}

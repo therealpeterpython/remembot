@@ -6,7 +6,7 @@ todo rename: task -> appointment
 
 """
 
-from remembot.common.helper import process_appointment_str
+from remembot.common.helper import parse_appointment_str
 from remembot.common.constants import *
 
 import datetime as dt
@@ -130,7 +130,7 @@ def add_appointment(app_str, chat_id, bot):
     appointments = load_tasks()
 
     # split the appointment blocks #
-    appointment_blocks = process_appointment_str(app_str)
+    appointment_blocks = parse_appointment_str(app_str)
     new_appointments = []
 
     # if app_str was not valid #

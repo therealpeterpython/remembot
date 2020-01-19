@@ -12,8 +12,8 @@ from remembot.common.constants import *
 #  A;;EVERY_N_DAYS;;14;;13.09.2019;;14:45;;My text
 #  A;;NTH_WEEKDAY;;2;;MONDAY;;14:45;;My text
 #  A;;NUM;;13.09.2019;;14:45;;My text
-def process_appointment_str(app_str):
-    print("-- process_appointment_str")
+def parse_appointment_str(app_str):
+    print("-- parse_appointment_str")
     parameter = app_str.split(DELIMITER)
     index = [i for i, p in enumerate(parameter) if p == BLOCK_START]  # get the indices of the start token
     index.append(len(parameter))

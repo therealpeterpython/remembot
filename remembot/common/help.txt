@@ -1,5 +1,5 @@
 I am <em>Rememgram</em>, your friendly reminder bot.
-You can create new reminders with /start. To spare group chats from becoming messy you can create an reminder in a private chat with me and send it to another chat via custom button.
+You can create new reminders with /new. To spare group chats from becoming messy you can create an reminder in a private chat with me and send it to another chat via custom button.
 You can even change fast to private chat from any chat you want, if you type <em>'@rememgram_bot '</em> and choose <em>'Create new date for this group!'</em>.
 
 <b>Types of events</b>
@@ -10,9 +10,9 @@ There are 4 different types of events you can choose from:
 <b>• Fixed period</b>:  periodic with a fixed number of days in between
 
 <b>Commands</b>
-/start - starts the creation of a new reminder
-/cancel - cancels the actual creation
+/new - create a new reminder
+/cancel - cancel the actual creation
 /delete - select a reminder to delete it
-/info - shows all reminders of this chat
-/help - shows this help
+/info - show all reminders of this chat
+/help - show this help
 /about - show information about the bot and its repository

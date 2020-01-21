@@ -1,2 +1,2 @@
-*Session expired*
-Create a new appointment with /start or get some support with /help
+<b>Session expired</b>
+Create a new appointment with /new or get some support with /help

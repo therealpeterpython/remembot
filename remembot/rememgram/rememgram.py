@@ -1,10 +1,18 @@
 """
-todo put more infos here
-todo replace # with \""" in descriptions
-todo rename: task -> appointment
+This is the version v2.0 of the rememgram backend written by
+therealpeterpython (github.com/therealpeterpython).
+You can find the bot, this code and my other work at
+github.com/therealpeterpython/remembot.
+Feel free to submit issues, requests and feedback via github.
 
-
+This program is licensed under CC BY-SA 4.0 by therealpeterpython.
 """
+
+
+# todo replace # with \""" in descriptions
+# todo rename: task -> appointment
+
+
 
 from remembot.common.helper import parse_appointment_str
 from remembot.common.constants import *
@@ -56,8 +64,12 @@ class Appointment:
             return self.last_execution < occ < now
 
     # todo testen
-    # returns a pretty string version of the appointment
     def pprint(self):
+        """
+        Creates a pretty print string of the stored appointment data.
+
+        :return: Pretty string which can be printed without regrets.
+        """
         text = ""
         if self.type == ONCE:
             text += "Once at {}. {} {}: \"{}\"".format(calendar.day_abbr[self.date.weekday()], self.get_date(), self.get_time(), self.description)
@@ -74,9 +86,11 @@ class Appointment:
     def get_time(self): return self.time.strftime(TIME_FORMAT)
 
 
-# Caps the day at the max or min if necessary
-# Useful for transitions (e.g.) 30.1 -> 28.2
 def get_valid_day(year, month, day):
+    """
+    Caps the day at the biggest day for the given month and at 1 if
+    necessary. Useful for transitions (e.g.) 30.1 -> 28.2.
+    """
     num_days = cal.monthrange(year, month)[1]
     day = max(1, day)
     day = min(num_days, day)
@@ -84,10 +98,11 @@ def get_valid_day(year, month, day):
 
 
 def subtract_one_month(t):
-    """Return a `datetime.date` or `datetime.datetime` (as given) that is
-    one month later.
-    Note that the resultant day of the month might change if the following
-    month has fewer days:
+    """
+    Return a `datetime.date` or `datetime.datetime` (as given) that
+    is one month later.
+    Note that the resultant day of the month might change if the
+    following month has fewer days:
         subtract_one_month(datetime.date(2010, 3, 31))
         == datetime.date(2010, 2, 28)
     """
@@ -98,11 +113,13 @@ def subtract_one_month(t):
     return one_month_earlier
 
 
-# Return the nth occurrence of week_day
-# in the month in the year given by date
-# If there are not enough occurrences of the week_day in the month
-# then the nth_week parameter gets decreased by 1
 def get_nth_weekday(date, nth_week, week_day):
+    """
+    Return the nth occurrence of week_day in the month in the year
+    given by date. If there are not enough occurrences of the
+    week_day in the month then the nth_week parameter gets decreased
+    by 1.
+    """
     temp = date.replace(day=1)
     diff = (week_day - temp.weekday()) % 7
     temp += dt.timedelta(days=diff)  # temp is now the first occurrence of the weekday in the given month
@@ -112,16 +129,19 @@ def get_nth_weekday(date, nth_week, week_day):
     return temp
 
 
-# a quick way to expand years after 2000
-# takes None, str and int as input type
-# (e.g.) 19 -> 2019
+'''
 def expand_year(year):
+    """
+    A quick way to expand years after 2000 takes None, str and int as
+    input type (e.g.) 19 -> 2019    
+    """
     if not year:
         year = None
     else:
         year = int(year)
         year += 2000 if year < 2000 else 0
     return year
+'''
 
 
 # todo testen

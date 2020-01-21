@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 """
 This is the version v2.0 of the rememgram bot written by
 therealpeterpython (github.com/therealpeterpython).
@@ -34,7 +31,6 @@ logging.basicConfig(format='\n%(asctime)s - %(name)s - %(levelname)s - %(message
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
-# todo /start -> /new
 # todo verschiedenen nutzer die gleizeitig mit dem bot arbeiten testen
 
 
@@ -138,7 +134,7 @@ class AppointmentCreator:
 
     def pprint(self):
         """
-        Create a pretty print string of the stored appointments.
+        Creates a pretty print string of the stored appointments.
 
         :return: Pretty string which can be printed without regrets.
         """
@@ -332,9 +328,8 @@ def send_all(update, context):
     chat_ids = set([task.chat_id for task in rememgram.load_object(tasks_path)])
     num_send = 0
     for chat_id in chat_ids:
-        print("TODO test this function!")
         try:
-            #context.bot.send_message(chat_id=int(chat_id), text=text, parse_mode="HTML")
+            context.bot.send_message(chat_id=int(chat_id), text=text, parse_mode="HTML")
             num_send += 1
         except TelegramError:
             print("Telegram Error while sending!")
@@ -353,7 +348,6 @@ def delete(update, context):
     """
     print("-- delete")
     chat_id = update.message.chat.id
-    #message_id = update.message.message_id
     eraser = Eraser.getinstance(chat_id)
     if eraser:  # delete old Eraser object
         send_expired_message(eraser.message_id, eraser.chat_id, context.bot)
@@ -408,7 +402,7 @@ def info(update, context):
 
 # soll die nächsten Vorkomnisse der (regemäßigen) Termine ausgeben
 def next_occurrences():
-    print("-- next_occurrences")  # todo
+    print("-- next_occurrences")  # todo function implementieren
 
 
 def about(update, context):
@@ -677,7 +671,6 @@ def text_handler(update, context):
 
 # ==== Inline keyboard handler ==== #
 
-# todo methode ist ziemlich lang. ggf nochmal in 2-3 kleienre methoden aufteilen
 def inline_keyboard_handler(update, context):
     """
     Catches all replies of inline keyboards. If there is an
@@ -702,7 +695,7 @@ def inline_keyboard_handler(update, context):
     if ac and ac.message_id == message_id:  # we have an AppointmentCreator object for this chat and this message
         process_ac_input(update, context, ac)
 
-    elif eraser and eraser.message_id == message_id: # we have an Eraser object for this chat and this message
+    elif eraser and eraser.message_id == message_id:  # we have an Eraser object for this chat and this message
         process_eraser_input(update, context, eraser)
 
     else:  # we have neither an AppointmentCreator nor Eraser object
@@ -864,7 +857,9 @@ def inline_query_handler(update, context):
     else:
         r[0].title = "Create appointment"
 
-    update.inline_query.answer(r, switch_pm_text="Create new date for this group!", switch_pm_parameter="unused_but_necessary_parameter")
+    update.inline_query.answer(r, switch_pm_text="Create new date for this group!",
+                               switch_pm_parameter="unused_but_necessary_parameter",
+                               is_personal=True)
 
 
 # ==== Helper functions ==== #

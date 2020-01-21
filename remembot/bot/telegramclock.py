@@ -1,23 +1,30 @@
 """
-todo
+A library that allows to create an inline keyboard time selector.
+Written by therealpeterpython github.com/therealpeterpython/remembot
+
+This program is licensed under CC BY-SA 4.0 by therealpeterpython.
 """
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-
 from remembot.common.constants import *
 
 
 def create_callback_data(action, time):
-    """ Create the callback data associated to each button"""
+    """Create the callback data associated to each button"""
     return SEPARATOR.join([action, str(time)])
 
 
 def separate_callback_data(data):
-    """ Separate the callback data"""
+    """Separate the callback data"""
     return data.split(SEPARATOR)
 
 
 def create_clock():
+    """
+    Creates a inline keyboard markup to select a hour and minute.
+
+    :return: Inline keyboard markup with time selector
+    """
     hour_columns = 4
     minute_blocks = [0, 15, 30, 45]
 
@@ -46,12 +53,6 @@ def create_clock():
 
 
 def process_clock_selections(update, context):
-    """
-    todo
-
-    :param update:
-    :param context:
-    :return:
-    """
+    """Splits the keyboard selection"""
     mode, value = separate_callback_data(update.callback_query.data)
     return mode, int(value)

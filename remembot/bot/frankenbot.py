@@ -31,8 +31,8 @@ logging.basicConfig(format='\n%(asctime)s - %(name)s - %(levelname)s - %(message
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
-# todo verschiedenen nutzer die gleizeitig mit dem bot arbeiten testen
-
+# todo verschiedenen nutzer die gleizeitig in versch. chats mit dem bot arbeiten testen
+# todo systemd module schreiben
 
 # ==== Class definitions ==== #
 
@@ -246,7 +246,7 @@ def add(update, context):
     if new_appointments:
         text = "<b>I have added the following appointments:</b>\n"
         text += '\n'.join(["<b>{}</b> {}".format(BULLET, appointment.pprint()) for appointment in new_appointments])
-        update.message.reply_text(text=text, parse_mode="HTML")
+        update.message.reply_text(text=text, parse_mode="HTML", disable_web_page_preview=True)
     else:
         update.message.reply_text(text="Couldn't understand this appointment! Get help with /help or create a new appointment with /new!")
 
@@ -336,6 +336,10 @@ def send_all(update, context):
     print(num_send, " messages were send!")
 
 
+# todo delete <nummern> sollen die appointments der nummern löschen
+#  dafür /info anpassen sodass die nummern mitangfezeigt werden
+#  und die hilfe so anpassen, dass diese änderungen drin vorkommen
+# todo wenn es nichts zu löschen gibt dies abfangen und einen entsprechendnen angepassten text zurückschicken
 def delete(update, context):
     """
     Delete command handler. Shows the initial delete options in an
@@ -364,7 +368,7 @@ def delete(update, context):
             # create the appointment list #
             text += "\n <b>{}.</b> {}".format(ind, appointment.pprint())
             # create the keyboard with num_columns columns "
-            row.append(InlineKeyboardButton("{}.".format(ind), callback_data=str(appointment.id)))
+            row.append(InlineKeyboardButton("{}.".format(ind), callback_data=appointment.id))
             if not (ind+1) % num_columns:
                 keyboard.append(row)
                 row = []
@@ -381,6 +385,7 @@ def delete(update, context):
     Eraser(chat_id, message.message_id)
 
 
+# todo wenn es keine tasks gibt dies abfangen und eine angepasste nachricht zurück schicken
 def info(update, context):
     """
     Info command handler. Sends the appointments as readable list
@@ -402,7 +407,7 @@ def info(update, context):
 
 # soll die nächsten Vorkomnisse der (regemäßigen) Termine ausgeben
 def next_occurrences():
-    print("-- next_occurrences")  # todo function implementieren
+    print("-- next_occurrences")  # todo implement function
 
 
 def about(update, context):
@@ -654,8 +659,11 @@ def text_handler(update, context):
     print("-- text_handler")
     if update.message:  # text message
         chat_id = update.message.chat.id
-    else:  # inlinekeyboard
+    elif update.callback_query:  # inlinekeyboard
         chat_id = update.callback_query.message.chat_id
+    else:
+        return
+
     ac = AppointmentCreator.getinstance(chat_id)
     if ac:
         if ac.stage == DESCRIPTION:
@@ -665,7 +673,6 @@ def text_handler(update, context):
         else:
             return
         ac.stage = next_stage(ac.type, ac.stage)
-        #context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
         STAGE_FUNCTIONS[ac.stage](update, context, **get_parameters(ac.type, ac.stage))  # call the stage function
 
 
@@ -725,18 +732,18 @@ def process_ac_input(update, context, ac):
     elif data == IGNORE:  # ignore the pressed button
         return
 
-    if ac.stage == TYPE:
+    if ac.stage == TYPE:  # === STAGE: TYPE
         ac.type = data
-    elif ac.stage == COUNT:
+    elif ac.stage == COUNT:  # === STAGE: COUNT
         ac.count = data
-    elif ac.stage == DATE:
+    elif ac.stage == DATE:  # === STAGE: DATE
         mode, date = telegramcalendar.process_calendar_selection(context.bot, update)
         if mode != "DAY":
             return  # can't move on to the next stage
         ac.date = date
-    elif ac.stage == WEEKDAY:
+    elif ac.stage == WEEKDAY:  # === STAGE: WEKDAY
         ac.weekday = data
-    elif ac.stage == TIME:
+    elif ac.stage == TIME:  # === STAGE: TIME
         mode, value = telegramclock.process_clock_selections(update, context)
         if mode == "HOUR":
             ac.time = ac.time.replace(hour=value)
@@ -747,7 +754,7 @@ def process_ac_input(update, context, ac):
 
         if not (ac.set_minute and ac.set_hour):
             return  # can't move on to the next stage
-    elif ac.stage == NEXT:
+    elif ac.stage == NEXT:  # === STAGE: NEXT
         if data == YES:
             ac.new_appointment()
             appointment_type(update, context)
@@ -770,6 +777,7 @@ def process_eraser_input(update, context, eraser):
     :param eraser: Eraser object related to the received data
     :return: None
     """
+    print("-- process_eraser_input")
     data = update.callback_query.data
     chat = update.callback_query.message.chat
     chat_id = chat.id
@@ -782,7 +790,9 @@ def process_eraser_input(update, context, eraser):
         rememgram.delete_tasks(eraser.deletion_list)
         # reply #
         if chat.type == "group":  # "group"
-            text = "<b>The following appointments were deleted by {}:\n</b>".format(chat.reply_to_message.from_user.first_name)  # todo testen ob das mit mehreren nutzern den richtigen ausgiebt
+            from_user = update.callback_query.from_user
+            name = from_user.username if from_user.username else from_user.first_name
+            text = "<b>The following appointments were deleted by {}:\n</b>".format(name)
         else:  # "private"
             text = "<b>The following appointments were deleted:\n</b>"
 
@@ -796,7 +806,7 @@ def process_eraser_input(update, context, eraser):
         return  # nothing else matters  ;)
 
     # == Mark or clear appointments == #
-    data = int(data)  # appointment identifier
+    #data = int(data)  # appointment identifier
 
     # Toggle appointment states if needed #
     if data in eraser.deletion_list:
@@ -996,12 +1006,8 @@ def main():
     updater.idle()
 
 
-if __name__ == '__main__':
-    # Mapping of the stages to their functions #
-    STAGE_FUNCTIONS = {TYPE: appointment_type, DATE: calendar, TIME: clock, COUNT: count, WEEKDAY: weekday,
-                       DESCRIPTION: description, NEXT: next}
-    # if i made a mistake and don't have STAGE_FUNCTIONS and the stages synced
-    if len(STAGE_FUNCTIONS) != NUM_STAGES:
-        raise Exception("Wrong number of stages or functions!")
-
-    main()
+# ==== Start script section ==== #
+# This part has to stay here
+# Mapping of the stages to their functions #
+STAGE_FUNCTIONS = {TYPE: appointment_type, DATE: calendar, TIME: clock, COUNT: count, WEEKDAY: weekday,
+                   DESCRIPTION: description, NEXT: next}

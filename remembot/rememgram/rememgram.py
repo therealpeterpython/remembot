@@ -14,6 +14,7 @@ This program is licensed under CC BY-SA 4.0 by therealpeterpython.
 
 from remembot.common.helper import parse_appointment_str
 from remembot.common.constants import *
+from remembot.common.config import tasks_path, old_tasks_path
 from remembot.bot import frankenbot as bot
 
 from uuid import uuid4
@@ -265,22 +266,24 @@ def execute(appointment):
 # saves the tasks with a consistent name
 def save_tasks(tasks):
     old_tasks = load_tasks()
-    save_object(old_tasks, "tasks.pkl.old")
-    save_object(tasks, "tasks.pkl")
+    save_object(old_tasks, old_tasks_path)
+    save_object(tasks, tasks_path)
 
 
 # load the tasks list
 def load_tasks():
-    tmp = load_object("tasks.pkl")
+    tmp = load_object(tasks_path)
     return tmp if tmp else []
 
 
+# todo ggf. diese methode in save_tasks mergen
 # pickles an object to filename
 def save_object(obj, filename):
     with open(filename, 'wb') as output:  # Overwrites any existing file.
         pickle.dump(obj, output)
 
 
+# todo ggf. diese methode in load_tasks mergen
 # unpickles an object from filename
 def load_object(filename):
     try:

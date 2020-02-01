@@ -12,14 +12,13 @@ This program is licensed under CC BY-SA 4.0 by therealpeterpython.
 # todo replace # with \""" in descriptions
 # todo rename: task -> appointment
 
-
-
 from remembot.common.helper import parse_appointment_str
 from remembot.common.constants import *
+from remembot.bot import frankenbot as bot
 
+from uuid import uuid4
 import datetime as dt
 import calendar as cal
-import remembot.bot.frankenbot as bot
 import calendar
 import pickle
 import sys
@@ -145,6 +144,7 @@ def expand_year(year):
 
 
 # todo testen
+# todo doc
 def add_appointment(app_str, chat_id, bot):
     # get all appointments #
     appointments = load_tasks()
@@ -160,17 +160,20 @@ def add_appointment(app_str, chat_id, bot):
     # process the blocks #
     for block in appointment_blocks:
         if block[1] == ONCE:
-            args = process_once(block)
+            data = process_once(block)
         elif block[1] == EVERY_N_DAYS:
-            args = process_every_n_days(block)
+            data = process_every_n_days(block)
         elif block[1] == NTH_WEEKDAY:
-            args = process_nth_weekday(block)
+            data = process_nth_weekday(block)
         elif block[1] == NUM:
-            args = process_num(block)
+            data = process_num(block)
+        else:
+            continue
 
-        uid = hash(tuple(block + [chat_id, bot]))  # todo ggf. random machen
-        appointment = Appointment(id=uid, chat_id=chat_id, bot=bot, **args)
+        uid = str(uuid4())  # hash(tuple(block + [chat_id, bot]))
+        appointment = Appointment(id=uid, chat_id=chat_id, bot=bot, **data)
         new_appointments.append(appointment)
+        print("New Appointment: ", appointment)
 
     appointments.extend(new_appointments)
 
@@ -238,7 +241,6 @@ def get_tasks_by_chat():
     return tasks_by_chat
 
 
-# todo test
 # check if a task needs to be executed
 def check_tasks():
     now = dt.datetime.now()
@@ -260,9 +262,10 @@ def execute(appointment):
     bot.remind(appointment)
 
 
-# todo cp to tasks.pkl.old and write to file
 # saves the tasks with a consistent name
 def save_tasks(tasks):
+    old_tasks = load_tasks()
+    save_object(old_tasks, "tasks.pkl.old")
     save_object(tasks, "tasks.pkl")
 
 

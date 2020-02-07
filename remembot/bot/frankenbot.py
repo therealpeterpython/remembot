@@ -29,7 +29,7 @@ logging.basicConfig(format='\n%(asctime)s - %(name)s - %(levelname)s - %(message
                     level=logging.INFO, filename=log_path, filemode='a')
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
+logger.addHandler(logging.StreamHandler())  # todo just for debugging (DEACTIVATE IF PUBLISHED!)
 
 # todo verschiedenen nutzer die gleizeitig in versch. chats mit dem bot arbeiten testen
 # todo systemd module schreiben
@@ -893,6 +893,10 @@ def send_expired_message(message_id, chat_id, bot):
                           parse_mode="HTML")
 
 
+# todo testen was passiert wenn an zwei appointmnts aus zwei unterschiedlichen chats erinnert werden muss, der erste
+#  chat den bot aber in der zwischenzeit blockiert hat. Wird die zweite Nachricht trotzdem geschickt??
+# todo try sending as markdown when hitting errors send normal
+#  add this feature in der doku
 def remind(appointment):
     """
     Takes an Appointment object and sends its description to its chat

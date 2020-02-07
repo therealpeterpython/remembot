@@ -1,0 +1,12 @@
+[Unit]
+Description=Start unit for the rememgram bot
+After=network.target
+
+[Service]
+Type=forking
+Restart=on-failure
+RestartSec=20
+ExecStart=python3 ./remembot/__main__.py 2>/dev/null
+
+[Install]
+WantedBy=default.target

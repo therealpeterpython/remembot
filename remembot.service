@@ -3,10 +3,10 @@ Description=Start unit for the rememgram bot
 After=network.target
 
 [Service]
-Type=forking
+Type=simple
 Restart=on-failure
-RestartSec=20
-ExecStart=python3 ./remembot/__main__.py 2>/dev/null
+RestartSec=30
+ExecStart={INSERT-ABS-PATH-TO-PYTHON3} {INSERT-ABS-PATH-TO-REMEMBOT}/__main__.py 2>/dev/null
 
 [Install]
 WantedBy=default.target

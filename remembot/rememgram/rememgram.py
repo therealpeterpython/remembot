@@ -9,12 +9,11 @@ This program is licensed under CC BY-SA 4.0 by therealpeterpython.
 """
 
 
-# todo replace # with \""" in descriptions
-# todo rename: task -> appointment
+# todo replace # with \"\"\" in descriptions
 
 from remembot.common.helper import parse_appointment_str
 from remembot.common.constants import *
-from remembot.common.config import tasks_path, old_tasks_path
+from remembot.common.config import appointments_path, old_appointments_path
 from remembot.bot import frankenbot as bot
 
 from uuid import uuid4
@@ -22,7 +21,6 @@ import datetime as dt
 import calendar as cal
 import calendar
 import pickle
-import sys
 
 
 class Appointment:
@@ -49,7 +47,7 @@ class Appointment:
             return dt.datetime.combine(self.date, self.time) < now
         elif self.type == EVERY_N_DAYS:
             appointment_datetime = dt.datetime.combine(self.date, self.time)
-            # gets the last time the task should have been executed #
+            # gets the last time the appointment should have been executed #
             last_occurrence = appointment_datetime + dt.timedelta(days=(((now - appointment_datetime).days // self.count) * self.count))
             return self.last_execution < last_occurrence < now and appointment_datetime < now
         elif self.type == NTH_WEEKDAY:
@@ -129,26 +127,11 @@ def get_nth_weekday(date, nth_week, week_day):
     return temp
 
 
-'''
-def expand_year(year):
-    """
-    A quick way to expand years after 2000 takes None, str and int as
-    input type (e.g.) 19 -> 2019    
-    """
-    if not year:
-        year = None
-    else:
-        year = int(year)
-        year += 2000 if year < 2000 else 0
-    return year
-'''
-
-
 # todo testen
 # todo doc
 def add_appointment(app_str, chat_id, bot):
     # get all appointments #
-    appointments = load_tasks()
+    appointments = load_appointments()
 
     # split the appointment blocks #
     appointment_blocks = parse_appointment_str(app_str)
@@ -179,8 +162,8 @@ def add_appointment(app_str, chat_id, bot):
     appointments.extend(new_appointments)
 
     # save and check all appointments #
-    save_tasks(appointments)
-    check_tasks()
+    save_appointments(appointments)
+    check_appointments()
 
     return new_appointments
 
@@ -208,44 +191,34 @@ def process_num(parameters):
     return {"type": NUM, "date": date, "time": time, "description": parameters[4]}
 
 
-# deletes all tasks with ids in 'remove_ids'
-def delete_tasks(remove_ids):
-    tasks = load_tasks()
-    tmp = list(tasks)  # dont iterate over a changing list
-    for task in tmp:
-        if task.id in remove_ids:
-            tasks.remove(task)
-    save_tasks(tasks)
+# deletes all appointments with ids in 'remove_ids'
+def delete_appointments(remove_ids):
+    appointments = load_appointments()
+    tmp = list(appointments)  # don't iterate over a changing list
+    for appointment in tmp:
+        if appointment.id in remove_ids:
+            appointments.remove(appointment)
+    save_appointments(appointments)
 
 
-# delete all tasks of given chat
-def delete_all_tasks(chat_id):
-    tasks = load_tasks()
-    tmp = list(tasks)  # dont iterate over a changing list
-    for task in tmp:
-        if task.chat_id == chat_id:
-            tasks.remove(task)
-    save_tasks(tasks)
+# returns the appointments sorted in dict by chat_ids: {id1:[appointment1.1,appointment1.2],...}
+def get_appointments_by_chat():
+    appointments = load_appointments()
+    appointments_by_chat = {}
 
-
-# returns the tasks sorted in dict by chat_ids: {id1:[task1.1,task1.2],...}
-def get_tasks_by_chat():
-    tasks = load_tasks()
-    tasks_by_chat = {}
-
-    for task in tasks:
-        if task.chat_id in tasks_by_chat:
-            tasks_by_chat[task.chat_id].append(task)
+    for appointment in appointments:
+        if appointment.chat_id in appointments_by_chat:
+            appointments_by_chat[appointment.chat_id].append(appointment)
         else:
-            tasks_by_chat[task.chat_id] = [task]
+            appointments_by_chat[appointment.chat_id] = [appointment]
 
-    return tasks_by_chat
+    return appointments_by_chat
 
 
-# check if a task needs to be executed
-def check_tasks():
+# check if a appointment needs to be executed
+def check_appointments():
     now = dt.datetime.now()
-    appointments = load_tasks()
+    appointments = load_appointments()
     tmp = list(appointments)
 
     for appointment in tmp:
@@ -255,39 +228,27 @@ def check_tasks():
             if appointment.type == ONCE:  # execute it just once
                 appointments.remove(appointment)
 
-    save_tasks(appointments)
+    save_appointments(appointments)
 
 
-# executes a task
+# executes an appointment
 def execute(appointment):
     bot.remind(appointment)
 
 
-# saves the tasks with a consistent name
-def save_tasks(tasks):
-    old_tasks = load_tasks()
-    save_object(old_tasks, old_tasks_path)
-    save_object(tasks, tasks_path)
+# saves the appointments with a consistent name
+def save_appointments(appointments):
+    old_appointments = load_appointments()
+    with open(old_appointments_path, 'wb') as out:  # Overwrites any existing file.
+        pickle.dump(old_appointments, out)
+    with open(appointments_path, 'wb') as out:  # Overwrites any existing file.
+        pickle.dump(appointments, out)
 
 
-# load the tasks list
-def load_tasks():
-    tmp = load_object(tasks_path)
-    return tmp if tmp else []
-
-
-# todo ggf. diese methode in save_tasks mergen
-# pickles an object to filename
-def save_object(obj, filename):
-    with open(filename, 'wb') as output:  # Overwrites any existing file.
-        pickle.dump(obj, output)
-
-
-# todo ggf. diese methode in load_tasks mergen
-# unpickles an object from filename
-def load_object(filename):
+# load the appointments list
+def load_appointments():
     try:
-        with open(filename, 'rb') as input:
-            return pickle.load(input)
+        with open(appointments_path, 'rb') as inp:
+            return pickle.load(inp)
     except FileNotFoundError:
-        return None
+        return []

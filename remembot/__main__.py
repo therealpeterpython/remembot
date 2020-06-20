@@ -15,7 +15,7 @@ from remembot.common.config import checkup_interval
 def appointment_checker():
     while True:
         try:  # try to check the appointments
-            rememgram.check_tasks()
+            rememgram.check_appointments()
         except NetworkError:  # ignore network errors
             pass
         time.sleep(checkup_interval)

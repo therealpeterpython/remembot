@@ -6,13 +6,13 @@ You can even change fast to private chat from any chat you want, if you type <em
 There are 4 different types of events you can choose from:
 <b>• Unique</b>:  happens just once
 <b>• Day</b>:  always at the same day in each month
-<b>• Weekday</b>:  every nth-occurrence of the chosen weekday in each month
+<b>• Weekday</b>:  the nth-occurrence of the chosen weekday once at each month
 <b>• Fixed period</b>:  periodic with a fixed number of days in between
 
 <b>Commands</b>
 /new - create a new reminder
-/cancel - cancel the actual creation
+/cancel - cancel the current action
 /delete - select a reminder to delete it
 /info - show all reminders of this chat
 /help - show this help
-/about - show information about the bot and its repository
+/about - show information about the bot, its repository and its maker

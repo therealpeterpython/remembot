@@ -13,6 +13,7 @@ from uuid import uuid4
 import datetime
 import calendar as cal
 
+from telegram.error import BadRequest
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, InlineQueryResultArticle, InputTextMessageContent, TelegramError
 from telegram.ext import Updater, InlineQueryHandler, CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 
@@ -29,12 +30,15 @@ logging.basicConfig(format='\n%(asctime)s - %(name)s - %(levelname)s - %(message
                     level=logging.INFO, filename=log_path, filemode='a')
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())  # todo just for debugging (DEACTIVATE IF PUBLISHED!)
+logger.addHandler(logging.StreamHandler())  # todo just for debugging
 
 # todo verschiedenen nutzer die gleizeitig in versch. chats mit dem bot arbeiten testen
-# todo systemd module schreiben
+# todo ist es wirklich nötig das man nach dem erstellen einer Erinnerung auf "create here" klickt und dann trotzdem
+#  nochmal den Befehl per chat senden muss
+
 
 # ==== Class definitions ==== #
+
 
 class AppointmentCreator:
     """
@@ -196,6 +200,17 @@ class Eraser:
 
 # ==== Command handlers ==== #
 
+def _myid(update, context):
+    """
+    _myid command handler. Answers with the uid of the evoking user.
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :return: None
+    """
+    context.bot.send_message(chat_id=update.message.chat.id, text=update._effective_user.id)
+
+
 def start(update, context):
     """
     Start command handler. Calls the appointment_type function and
@@ -282,20 +297,33 @@ def cancel(update, context):
         chat_id = update.callback_query.message.chat_id
     ac = AppointmentCreator.getinstance(chat_id)
     eraser = Eraser.getinstance(chat_id)
-    #context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
 
-    text = "Nothing to cancel!"
+    text = ""
     if ac:
         context.bot.edit_message_text(text="Creation canceled!", chat_id=ac.chat_id, message_id=ac.message_id)
-        text = "Canceled creation - create a new appointment with /new or get help with /help"
+        text += "Canceled creation - create a new appointment with /new or get help with /help\n"
         ac.destroy()
     if eraser:
-        context.bot.edit_message_text(text="Creation canceled!", chat_id=eraser.chat_id, message_id=eraser.message_id)
-        text = "Canceled deletion - create a new appointment with /new or get help with /help"
+        context.bot.edit_message_text(text="Deletion canceled!", chat_id=eraser.chat_id, message_id=eraser.message_id)
+        text += "Canceled deletion - delete appointments with /delete or get help with /help\n"
         eraser.destroy()
+    if not text:
+        text = "Nothing to cancel!"
 
     context.bot.send_message(chat_id=chat_id, text=text)
 
+
+# todo
+def set_all_message(update, context):
+    """
+    _setmsg command handler. This is an admin only feature. Sets the
+    sendall message.
+
+    :param update: Standard telegram.Update object
+    :param context: Standard telegram.ext.CallbackContext object
+    :return: None
+    """
+    pass
 
 def send_all(update, context):
     """
@@ -325,7 +353,7 @@ def send_all(update, context):
         return
 
     # get the chat ids and send the text to the chats
-    chat_ids = set([task.chat_id for task in rememgram.load_object(tasks_path)])
+    chat_ids = set([appointment.chat_id for appointment in rememgram.load_appointments()])
     num_send = 0
     for chat_id in chat_ids:
         try:
@@ -336,10 +364,6 @@ def send_all(update, context):
     print(num_send, " messages were send!")
 
 
-# todo delete <nummern> sollen die appointments der nummern löschen
-#  dafür /info anpassen sodass die nummern mitangfezeigt werden
-#  und die hilfe so anpassen, dass diese änderungen drin vorkommen
-# todo wenn es nichts zu löschen gibt dies abfangen und einen entsprechendnen angepassten text zurückschicken
 def delete(update, context):
     """
     Delete command handler. Shows the initial delete options in an
@@ -361,8 +385,11 @@ def delete(update, context):
     num_columns = 3
     row = []
     keyboard = []
-    abc = rememgram.get_tasks_by_chat()  #
-    text = "<b>Clicking on a number marks the appointment for deletion:\n</b>"
+    abc = rememgram.get_appointments_by_chat()  #
+    if abc:
+        text = "<b>Clicking on a number marks the appointment for deletion:\n</b>"
+    else:
+        text = "<b>There are no appointments to delete</b>"
     if chat_id in abc:
         for ind, appointment in enumerate(abc[chat_id]):
             # create the appointment list #
@@ -385,7 +412,6 @@ def delete(update, context):
     Eraser(chat_id, message.message_id)
 
 
-# todo wenn es keine tasks gibt dies abfangen und eine angepasste nachricht zurück schicken
 def info(update, context):
     """
     Info command handler. Sends the appointments as readable list
@@ -397,9 +423,12 @@ def info(update, context):
     """
     print("-- info")
     chat_id = update.message.chat_id
-    abc = rememgram.get_tasks_by_chat()
+    abc = rememgram.get_appointments_by_chat()
 
-    text = "<b>I remember the following tasks:\n</b>"
+    if abc:
+        text = "<b>I remember the following appointments:\n</b>"
+    else:
+        text = "<b>You have no appointments yet</b>"
     if chat_id in abc:
         text += '\n'.join(["<b>{}</b> {}".format(BULLET, appointment.pprint()) for appointment in abc[chat_id]])
     context.bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML", disable_web_page_preview=True)
@@ -783,13 +812,15 @@ def process_eraser_input(update, context, eraser):
     chat_id = chat.id
     message_id = update.callback_query.message.message_id
 
-    abc = rememgram.get_tasks_by_chat()
+    abc = rememgram.get_appointments_by_chat()
 
     # == Delete the marked appointments or cancel the deletion if the data is YES or NO == #
     if data == YES:  # delete
-        rememgram.delete_tasks(eraser.deletion_list)
+        rememgram.delete_appointments(eraser.deletion_list)
         # reply #
-        if chat.type == "group":  # "group"
+        if not eraser.deletion_list:  # nothing to delete
+            text = "<b>Nothing to delete!</b>"
+        elif chat.type == "group":  # "group"
             from_user = update.callback_query.from_user
             name = from_user.username if from_user.username else from_user.first_name
             text = "<b>The following appointments were deleted by {}:\n</b>".format(name)
@@ -817,7 +848,7 @@ def process_eraser_input(update, context, eraser):
     # Create keyboard and message text #
     num_columns = 3
     keyboard = []
-    text = "<b>I remember the following tasks:</b>"
+    text = "<b>I remember the following appointments:</b>"
     row = []
     if chat_id in abc:
         for ind, appointment in enumerate(abc[chat_id]):
@@ -895,8 +926,6 @@ def send_expired_message(message_id, chat_id, bot):
 
 # todo testen was passiert wenn an zwei appointmnts aus zwei unterschiedlichen chats erinnert werden muss, der erste
 #  chat den bot aber in der zwischenzeit blockiert hat. Wird die zweite Nachricht trotzdem geschickt??
-# todo try sending as markdown when hitting errors send normal
-#  add this feature in der doku
 def remind(appointment):
     """
     Takes an Appointment object and sends its description to its chat
@@ -953,8 +982,7 @@ def get_parameters(type, stage): return PARAMETERS[type].get(stage, {})
 # ==== Main function ==== #
 
 def check_handler(update, context):  # todo just for debug
-    rememgram.check_tasks()
-
+    rememgram.check_appointments()
 
 def main():
     """
@@ -965,7 +993,7 @@ def main():
     """
     print("-- main")
     # Delete temporary auth token #
-    #get_token()
+    #get_token()  # todo obsolte
 
     # Get token #
     with open(token_path, "r") as token_file:
@@ -977,7 +1005,7 @@ def main():
     # Get the dispatcher to register handlers #
     dp = updater.dispatcher
 
-    # setup the admin features #
+    # Setup the admin features #
     with open(admins_path, "r") as fp:
         admins = [Filters.user(user_id=int(id)) for id in fp.readlines()]
 
@@ -988,12 +1016,16 @@ def main():
     # Add the handlers #
     dp.add_handler(CommandHandler("c", check_handler))  # todo just for debug
 
+    dp.add_handler(CommandHandler("_myid", _myid))
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("new", start))
     dp.add_handler(CommandHandler("add", add))
     dp.add_handler(CommandHandler("cancel", cancel))
     dp.add_handler(CommandHandler("delete", delete))
+    dp.add_handler(CommandHandler("remove", delete))  # for convenience
     dp.add_handler(CommandHandler("info", info))
+    dp.add_handler(CommandHandler("list", info))  # for convenience
+    dp.add_handler(CommandHandler("all", info))  # for convenience
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("about", about))
     dp.add_handler(CallbackQueryHandler(inline_keyboard_handler))
@@ -1015,3 +1047,4 @@ def main():
 # Mapping of the stages to their functions #
 STAGE_FUNCTIONS = {TYPE: appointment_type, DATE: calendar, TIME: clock, COUNT: count, WEEKDAY: weekday,
                    DESCRIPTION: description, NEXT: next}
+

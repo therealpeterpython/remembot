@@ -3,7 +3,7 @@
 # A library that allows to create an inline calendar keyboard.
 # grcanosa https://github.com/grcanosa
 #
-# Modified by therealpeterpython github.com/therealpeterpython/remembot (2019)
+# Modified by therealpeterpython github.com/therealpeterpython/remembot (2019/20)
 """
 Base methods for calendar keyboard creation and processing.
 """

@@ -9,8 +9,6 @@ This program is licensed under CC BY-SA 4.0 by therealpeterpython.
 """
 
 
-# todo replace # with \"\"\" in descriptions
-
 from remembot.common.helper import parse_appointment_str
 from remembot.common.constants import *
 from remembot.common.config import appointments_path, old_appointments_path
@@ -40,7 +38,6 @@ class Appointment:
         self.count = count
         self.weekday = weekday
 
-    # todo testen
     def needs_execution(self):
         now = dt.datetime.now()
         if self.type == ONCE:
@@ -61,7 +58,6 @@ class Appointment:
             occ = dt.datetime(now.year, now.month, occ_day, self.time.hour, self.time.minute)
             return self.last_execution < occ < now
 
-    # todo testen
     def pprint(self):
         """
         Creates a pretty print string of the stored appointment data.
@@ -72,7 +68,7 @@ class Appointment:
         if self.type == ONCE:
             text += "Once at {}. {} {}: \"{}\"".format(calendar.day_abbr[self.date.weekday()], self.get_date(), self.get_time(), self.description)
         elif self.type == EVERY_N_DAYS:
-            text += "Every {} days at {}, starting with the {}. {}: \"{}\"".format(self.count, self.get_time(), calendar.day_abbr[self.date.weekday()], self.get_date(), self.description)
+            text += "Every {} days at {}, starting on {}. {}: \"{}\"".format(self.count, self.get_time(), calendar.day_abbr[self.date.weekday()], self.get_date(), self.description)
         elif self.type == NTH_WEEKDAY:
             text += "Every {}. {} at {}: \"{}\"".format(self.count, calendar.day_name[self.weekday], self.get_time(), self.description)
         elif self.type == NUM:
@@ -97,7 +93,7 @@ def get_valid_day(year, month, day):
 
 def subtract_one_month(t):
     """
-    Return a `datetime.date` or `datetime.datetime` (as given) that
+    Returns a `datetime.date` or `datetime.datetime` (as given) that
     is one month later.
     Note that the resultant day of the month might change if the
     following month has fewer days:
@@ -113,10 +109,9 @@ def subtract_one_month(t):
 
 def get_nth_weekday(date, nth_week, week_day):
     """
-    Return the nth occurrence of week_day in the month in the year
+    Returns the nth occurrence of week_day in the month in the year
     given by date. If there are not enough occurrences of the
-    week_day in the month then the nth_week parameter gets decreased
-    by 1.
+    week_day in the month then the last occurrence is chosen.
     """
     temp = date.replace(day=1)
     diff = (week_day - temp.weekday()) % 7
@@ -127,9 +122,11 @@ def get_nth_weekday(date, nth_week, week_day):
     return temp
 
 
-# todo testen
-# todo doc
 def add_appointment(app_str, chat_id, bot):
+    """
+    Gets the appointments string from the chat and create new Appointment object(s). Do
+    nothing for invalid appointments strings. Return the Appointment object(s).
+    """
     # get all appointments #
     appointments = load_appointments()
 
@@ -154,13 +151,11 @@ def add_appointment(app_str, chat_id, bot):
         else:
             continue
 
-        uid = str(uuid4())  # hash(tuple(block + [chat_id, bot]))
+        uid = str(uuid4())
         appointment = Appointment(id=uid, chat_id=chat_id, bot=bot, **data)
         new_appointments.append(appointment)
-        print("New Appointment: ", appointment)
 
     appointments.extend(new_appointments)
-
     # save and check all appointments #
     save_appointments(appointments)
     check_appointments()
@@ -169,7 +164,7 @@ def add_appointment(app_str, chat_id, bot):
 
 
 def process_once(parameters):
-    date = dt.datetime.strptime(parameters[2], DATE_FORMAT).date()  # todo test dis shit i'm out ahh
+    date = dt.datetime.strptime(parameters[2], DATE_FORMAT).date()
     time = dt.datetime.strptime(parameters[3], TIME_FORMAT).time()
     return {"type": ONCE, "date": date, "time": time, "description": parameters[4]}
 
@@ -193,6 +188,9 @@ def process_num(parameters):
 
 # deletes all appointments with ids in 'remove_ids'
 def delete_appointments(remove_ids):
+    """
+    Deletes all appointments with ids in remove_ids.
+    """
     appointments = load_appointments()
     tmp = list(appointments)  # don't iterate over a changing list
     for appointment in tmp:
@@ -201,8 +199,12 @@ def delete_appointments(remove_ids):
     save_appointments(appointments)
 
 
-# returns the appointments sorted in dict by chat_ids: {id1:[appointment1.1,appointment1.2],...}
+#
 def get_appointments_by_chat():
+    """
+    Returns the sorted appointments as dict by chat_ids:
+    {id1:[appointment1.1,appointment1.2],...}.
+    """
     appointments = load_appointments()
     appointments_by_chat = {}
 
@@ -215,8 +217,11 @@ def get_appointments_by_chat():
     return appointments_by_chat
 
 
-# check if a appointment needs to be executed
 def check_appointments():
+    """
+    Executes appointments if needed and removes unique appointments
+    after execution.
+    """
     now = dt.datetime.now()
     appointments = load_appointments()
     tmp = list(appointments)
@@ -231,13 +236,14 @@ def check_appointments():
     save_appointments(appointments)
 
 
-# executes an appointment
 def execute(appointment):
     bot.remind(appointment)
 
 
-# saves the appointments with a consistent name
 def save_appointments(appointments):
+    """
+    Saves the appointments with a consistent name.
+    """
     old_appointments = load_appointments()
     with open(old_appointments_path, 'wb') as out:  # Overwrites any existing file.
         pickle.dump(old_appointments, out)
@@ -245,8 +251,10 @@ def save_appointments(appointments):
         pickle.dump(appointments, out)
 
 
-# load the appointments list
 def load_appointments():
+    """
+    Loads the appointments or an empty list.
+    """
     try:
         with open(appointments_path, 'rb') as inp:
             return pickle.load(inp)

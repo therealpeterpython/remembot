@@ -1,13 +1,13 @@
 I am <em>Rememgram</em>, your friendly reminder bot.
-You can create new reminders with /new. To spare group chats from becoming messy you can create an reminder in a private chat with me and send it to another chat via custom button.
+You can create new reminders with /new. To spare group chats from becoming messy you can create a reminder in a private chat with me and send it to another chat via button.
 You can even change fast to private chat from any chat you want, if you type <em>'@rememgram_bot '</em> and choose <em>'Create new date for this group!'</em>.
 
 <b>Types of events</b>
 There are 4 different types of events you can choose from:
 <b>• Unique</b>:  happens just once
 <b>• Day</b>:  always at the same day in each month
-<b>• Weekday</b>:  the nth-occurrence of the chosen weekday once at each month
-<b>• Fixed period</b>:  periodic with a fixed number of days in between
+<b>• Weekday</b>:  the nth-occurrence of the chosen weekday once in each month
+<b>• Fixed period</b>:  periodic with a fixed number of days in between (1 day = every day)
 
 <b>Commands</b>
 /new - create a new reminder

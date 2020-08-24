@@ -1,5 +1,5 @@
 <b><u>Unique</u></b>:  happens just once
-<b><u>Fixed period</u></b>:  periodic with a fixed number of days in between
-<b><u>Weekday</u></b>:  every nth-occurrence of the chosen weekday in each month
+<b><u>Fixed period</u></b>:  periodic with a fixed number of days in between (1 day = every day)
+<b><u>Weekday</u></b>:  the nth-occurrence of the chosen weekday once in each month
 <b><u>Day</u></b>:  always at the same day in each month
 

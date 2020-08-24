@@ -1,12 +1,3 @@
-todo /types command. Detaillierte erklärung zu den Termin arten
-todo gifs erstellen https://www.ubuntupit.com/15-best-linux-screen-recorder-and-how-to-install-those-on-ubuntu/
-https://askubuntu.com/questions/648603/how-to-create-an-animated-gif-from-mp4-video-via-command-line
-todo /_myid implementieren um seine eigene user id herrauszufinden. der bot schreibt dir deine uid zurück
-todo die 4 texte nach dem /add überarbeiten
-todo 0 bei fixed_period abfangen
-todo irgendwo den kommentar hinzufügen, dass das bei fixed period  Tag=1 everyday meint
-todo beim \add process den relevanten text oben dick schreiben ("number of days", "first occurence", "date", "time", "decription", ...) (dann sieht man besser das der sich ändert)
-
 # Dokumentation Rememgram v2
 
 
@@ -36,14 +27,14 @@ To enable a wide range of use cases there are four different types of appointmen
 Starts the creation of a new appointment.
 The first step is to choose an appointment type.
 Depending on your choice you have multiple steps in which you set the parameters of your appointment. After this you can decide to which chat the appointments belongs. If you are in the right chat already you can choose "Create appointment". 
-> TODO gif einer termin erstellung einfügen
+![](documentation/images/new_appointment.gif)
 
 #### /cancel
 Cancels the current create or delete action.
 
 #### /delete
-Let you selecting the appointments you want to delete. If you selected all of them you can click on "delete".
-> TODO gif einfügen
+Lets you select the appointments you want to delete. After you have selected them you can click on "delete".
+![](documentation/images/delete_appointments.gif)
 
 #### /info
 Shows the saved appointments for this chat.
@@ -55,9 +46,8 @@ Shows the help with all commands available.
 Shows information about the repository, the bot and its maker.
 
 ### Create appointments for other chats
-If you need to create appointments in group chats but you don't want to spam to much, you can create the appointment in a privat chat with the bot first. When you finished the appointment you can choose to switch to the group chat and activate the appointment there. If you are currently in the group chat you can switch even faster by typing "@remembot " (with the space) and click on "Create new date for this group!".
-> TODO inline function gif einfügen
-
+If you need to create appointments in group chats but you don't want to spam to much, you can create the appointment in a private chat with the bot first. When you finished the appointment you can choose to switch to the group chat and activate the appointment there. If you are currently in the group chat you can switch even faster by typing "@remembot " (with the space) and click on "Create new date for this group!".
+![](documentation/images/create_for_other_chat.gif)
 
 ## Setup your own bot
 ### Getting started
@@ -69,7 +59,7 @@ If you got your secret access token, you have to put it in the `remembot/bot/adm
 You can use the systemd service unit for this bot. This unit helps you to automatically start and restart the bot. On [digitalocean.com](https://www.digitalocean.com/community/tutorials/understanding-systemd-units-and-unit-files) is a service unit described as follows:
 > "A service unit describes how to manage a service or application on the server. This will include how to start or stop the service, under which circumstances it should be automatically started, and the dependency and ordering information for related software."
 
-If you want more information about systemd units you can read the full [article](https://www.digitalocean.com/community/tutorials/understanding-systemd-units-and-unit-files).
+If you want more information about systemd units you can read the [full article](https://www.digitalocean.com/community/tutorials/understanding-systemd-units-and-unit-files).
 
 #### Install requirements and setup the service unit
 To setup the bot you should use the ./init script. It will guide you through the installation of the required python packages via pip and handels the installation of the service unit as well.
@@ -79,7 +69,7 @@ There is a single requirements file, if you need to install the packages manuall
 Be aware that if you setup the service unit manually you have to replace the placeholders in the remembot.service file.
 
 #### Start the bot
-If you used the systemd unit with the setup script, the bot should automatically (re-)start. If you have any problems you may find
+If you have installed the systemd unit with the setup script, the bot should automatically (re-)start. If you have any problems you may find
 ```
 systemctl --user status remembot.service
 ```
@@ -90,13 +80,17 @@ To manually start the bot navigate to `remembot/remembot/` and call
 python3 __main__.py
 ```
 Now enter `/help` in a chat with your bot to see if the bot responds.
-> TODO gif calling /help
+>![](documentation/images/help.gif)
 
+### Administrative features
+To become an admin you have to write your user id in the admin file `remembot/remembot/bot/administration/admins.txt`. Each id must be in a new line.
 
-### admin features
-- features erklären (_myid, _sendall)
-- aktivieren indem man sich in die Admin datei einträgt
+#### /_myid
+To get your id you can use the `/_myid` command in a private chat with the bot.
 
+#### /_sendall
+If you want to send a message to all chats which have active appointments you can use this command.  
+If you enter `/_sendall help` you get the help for this command. If you enter `/_sendall view` you get the currently saved message. With `/_sendall all` you can send the saved message to everyone. Every other argument after the `/_sendall` gets saved as a new message. 
 
-
-TODO Lizenz
+### Licence 
+This program is published under the CC BY-SA 4.0 license.

@@ -1,0 +1,5 @@
+You can use the _sendall command to send a message to all users with active appointments. You have the following options:
+/_sendall help - you get this help
+/_sendall view - you get the current message
+/_sendall all - you send the current message to <b>all</b> chats
+/_sendall your_message - you set a new message

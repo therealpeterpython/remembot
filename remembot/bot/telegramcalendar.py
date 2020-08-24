@@ -33,8 +33,8 @@ def create_calendar(year=None, month=None):
     """
 
     now = datetime.datetime.now()
-    if year == None: year = now.year
-    if month == None: month = now.month
+    year = year if year else now.year
+    month = month if month else now.month
     keyboard = []
 
     # First row - Month and Year
@@ -103,6 +103,29 @@ def process_calendar_selection(bot, update):
     return ret_data
 
 
+def create_days():
+    """
+    Create an inline keyboard with 31 days to chose from.
+    :return: Returns the InlineKeyboardMarkup object with the calendar.
+    """
+
+    keyboard = [[InlineKeyboardButton("Days", callback_data=IGNORE)]]
+
+    for i in range(5):
+        row = []
+        for j in range(1, 8):
+            day = i*7+j
+            if i == 4 and j > 3:  # we just have 31 days (not 35)
+                row.append(InlineKeyboardButton(" ", callback_data=IGNORE))
+            else:
+                row.append(InlineKeyboardButton(str(day), callback_data=create_callback_data("DAY", 1000, 1, day)))  # random old year and month
+
+        keyboard.append(row)
+    keyboard.append([InlineKeyboardButton("<<  Back", callback_data=BACK)])
+
+    return InlineKeyboardMarkup(keyboard)
+
+
 def create_weekdays():
     """
     Creates an inline keyboard for the seven weekdays.
@@ -121,4 +144,3 @@ def create_weekdays():
 
     keyboard.append([InlineKeyboardButton("<<  Back", callback_data=BACK)])
     return InlineKeyboardMarkup(keyboard)
-

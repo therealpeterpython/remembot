@@ -22,26 +22,15 @@ def appointment_checker():
 
 
 def main():
-    max_attempts = 30
-    sleep_time = 20
-
     start_new_thread(appointment_checker, ())  # start the appointment checker
 
-    # try to start the bot
-    for i in range(max_attempts):
-        try:
-            frankenbot.main()  # start the bot (blocking)
-            break
-        except NetworkError as e:
-            warning = str(e).split("/bot")  # split at /bot to censor private information about the bot
-            warning = warning[0] + "[...]" if len(warning) > 1 else warning[0]  # if there were such information replace them with [...]
-            print("Warning: ", warning)
-        time.sleep(sleep_time)
-    else:
-        raise NetworkError(warning)
-
-
-    print("\n\nCiao, Kakao!")
+    try:
+        frankenbot.main()  # start the bot (blocking)
+        print("\n\nCiao, Kakao!")
+    except NetworkError as e:
+        warning = str(e).split("/bot")  # split at /bot to censor private information about the bot
+        warning = warning[0] + "[...]" if len(warning) > 1 else warning[0]  # if there were such information replace them with [...]
+        print("Warning: ", warning)
 
 
 if __name__ == "__main__":

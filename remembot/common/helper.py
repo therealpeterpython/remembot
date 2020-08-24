@@ -17,7 +17,7 @@ def parse_appointment_str(app_str):
     A;;NUM;;13.09.2019;;14:45;;My text
 
     :param app_str: String with all the information about the appointments
-    :return:
+    :return: List of appointment blocks if all of them are valid
     """
     print("-- parse_appointment_str")
     parameter = app_str.split(DELIMITER)
@@ -26,9 +26,8 @@ def parse_appointment_str(app_str):
     parameter_blocks = [parameter[index[i]: index[i+1]] for i in range(len(index)-1)]  # split into blocks
 
     # check that each block has the correct length (from this we conclude that the blocks are valid)
-    block_length = {ONCE: 5, EVERY_N_DAYS: 6, NTH_WEEKDAY: 6, NUM: 5}
     for block in parameter_blocks:
-        if block[1] not in block_length or block_length[block[1]] != len(block):
+        if block[1] not in BLOCK_LENGTH or BLOCK_LENGTH[block[1]] != len(block):
             return
 
     return parameter_blocks
